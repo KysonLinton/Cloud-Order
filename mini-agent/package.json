@@ -1,0 +1,22 @@
+{
+  "name": "mini-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "本地运行的轻量级 LLM Agent：对话 + 技能(Skills) + 插件(Plugins)，零依赖",
+  "type": "module",
+  "bin": {
+    "mini-agent": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "chat": "node src/index.js",
+    "web": "node src/index.js --web",
+    "tools": "node src/index.js --list-tools",
+    "skills": "node src/index.js --list-skills",
+    "test:mock": "node test/mock-llm-server.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "license": "MIT"
+}
