@@ -75,9 +75,9 @@ export function loadConfig({ configPath, overrides = {} } = {}) {
   if (process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL) {
     env.baseUrl = process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL;
   }
-  if (process.env.MINIAGENT_API_KEY || process.env.OPENAI_API_KEY) {
-    env.apiKey = process.env.MINIAGENT_API_KEY || process.env.OPENAI_API_KEY;
-  }
+  // 只认 MINIAGENT_API_KEY；OPENAI_API_KEY 仅在配置里没写 key 时才兜底，
+  // 否则会把 OpenAI 的 Key 发到别家服务（如 DeepSeek）导致 401。
+  const genericKey = process.env.MINIAGENT_API_KEY || process.env.OPENAI_API_KEY;
   if (process.env.MINIAGENT_MODEL) env.model = process.env.MINIAGENT_MODEL;
   if (process.env.MINIAGENT_STREAM) env.stream = process.env.MINIAGENT_STREAM !== '0';
 
@@ -95,6 +95,8 @@ export function loadConfig({ configPath, overrides = {} } = {}) {
   }
 
   const merged = { ...DEFAULTS, ...file, ...env, ...overrides };
+  // key 优先级：命令行 > 配置文件 > 环境变量兜底
+  if (!merged.apiKey) merged.apiKey = genericKey || '';
   merged.apiKey = expandEnv(merged.apiKey || '');
   merged.baseUrl = (merged.baseUrl || '').replace(/\/+$/, '');
   merged.workspace = path.resolve(ROOT, expandEnv(merged.workspace || '.'));
