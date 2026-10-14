@@ -47,7 +47,7 @@ export function createWebTools(config) {
         const res = await fetch(url, {
           signal: controller.signal,
           headers: {
-            'User-Agent': 'MiniAgent/0.1 (+local)',
+            'User-Agent': 'CloudOrder/0.1 (+local)',
             Accept: 'text/html,application/json,text/plain,*/*'
           },
           redirect: 'follow'

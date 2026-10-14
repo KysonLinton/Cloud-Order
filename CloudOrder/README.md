@@ -1,4 +1,4 @@
-# MiniAgent
+# CloudOrder
 
 一个**本地运行、零依赖**的 AI Agent。能和你自然对话，也能真正干活：读写文件、执行命令、抓网页、调用你写的插件和技能。
 
@@ -16,7 +16,7 @@
 需要 **Node.js ≥ 18.17**（推荐 22+，插件同步加载需要 22.12+）。
 
 ```powershell
-cd mini-agent
+cd CloudOrder
 node src/index.js
 ```
 
@@ -71,7 +71,7 @@ node src/index.js --web --port 9000
 | `maxSteps` | 单轮对话最多进行多少次「模型 → 工具」往返，默认 12 |
 | `enabledSkills` / `enabledPlugins` | `"*"` 或工具/技能名数组，用于按需启用 |
 
-环境变量优先于配置文件：`MINIAGENT_API_KEY`、`MINIAGENT_BASE_URL`、`MINIAGENT_MODEL`
+环境变量优先于配置文件：`CLOUDORDER_API_KEY`、`CLOUDORDER_BASE_URL`、`CLOUDORDER_MODEL`（旧前缀 `MINIAGENT_*` 仍向后兼容）
 （`OPENAI_API_KEY` / `OPENAI_BASE_URL` 同样识别）。
 
 ---
@@ -215,7 +215,7 @@ node src/index.js --base-url http://127.0.0.1:11435/v1 --model mock   # 终端 B
 ## 目录结构
 
 ```
-mini-agent/
+CloudOrder/
 ├── config.example.json     配置模板
 ├── plugins/                插件（.mjs，工具级接口）
 │   ├── utility.mjs         示例：时间/计算/Base64
@@ -249,7 +249,7 @@ mini-agent/
 └── test/                   测试与 mock 模型服务
 ```
 
-会话记录保存在 `.mini-agent/sessions/`。
+会话记录保存在 `.cloudorder/sessions/`。
 
 ---
 

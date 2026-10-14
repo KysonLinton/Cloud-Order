@@ -1,11 +1,11 @@
 {
-  "name": "mini-agent",
+  "name": "cloudorder",
   "version": "0.1.0",
   "private": true,
   "description": "本地运行的轻量级 LLM Agent：对话 + 技能(Skills) + 插件(Plugins)，零依赖",
   "type": "module",
   "bin": {
-    "mini-agent": "./src/index.js"
+    "cloudorder": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",

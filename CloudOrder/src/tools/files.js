@@ -126,7 +126,7 @@ export function createReadTools(config) {
       const rx = args.regex ? new RegExp(String(args.query), 'i') : null;
       const needle = String(args.query).toLowerCase();
       const includeRx = args.include ? globToRx(String(args.include)) : null;
-      const skip = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv', '.mini-agent']);
+      const skip = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv', '.cloudorder', '.mini-agent']);
       const hits = [];
       const MAX_HITS = 200;
 

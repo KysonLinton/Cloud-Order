@@ -9,7 +9,7 @@ export const ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const SKILLS_DIR = path.join(ROOT, 'skills');
 export const PLUGINS_DIR = path.join(ROOT, 'plugins');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
-export const DATA_DIR = path.join(ROOT, '.mini-agent');
+export const DATA_DIR = path.join(ROOT, '.cloudorder');
 export const SESSION_DIR = path.join(DATA_DIR, 'sessions');
 
 export const DEFAULTS = {
@@ -75,14 +75,17 @@ function stripComments(obj) {
 
 export function loadConfig({ configPath, overrides = {} } = {}) {
   const env = {};
-  if (process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL) {
-    env.baseUrl = process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL;
+  // 环境变量前缀：CLOUDORDER_* 为主，MINIAGENT_* 保留向后兼容；OPENAI_* 仅在未设置主前缀时兜底
+  if (process.env.CLOUDORDER_BASE_URL || process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL) {
+    env.baseUrl = process.env.CLOUDORDER_BASE_URL || process.env.MINIAGENT_BASE_URL || process.env.OPENAI_BASE_URL;
   }
-  // 只认 MINIAGENT_API_KEY；OPENAI_API_KEY 仅在配置里没写 key 时才兜底，
+  // 只认 CLOUDORDER_API_KEY / MINIAGENT_API_KEY；OPENAI_API_KEY 仅在配置文件里没写 key 时才兜底，
   // 否则会把 OpenAI 的 Key 发到别家服务（如 DeepSeek）导致 401。
-  const genericKey = process.env.MINIAGENT_API_KEY || process.env.OPENAI_API_KEY;
-  if (process.env.MINIAGENT_MODEL) env.model = process.env.MINIAGENT_MODEL;
-  if (process.env.MINIAGENT_STREAM) env.stream = process.env.MINIAGENT_STREAM !== '0';
+  const genericKey = process.env.CLOUDORDER_API_KEY || process.env.MINIAGENT_API_KEY || process.env.OPENAI_API_KEY;
+  if (process.env.CLOUDORDER_MODEL || process.env.MINIAGENT_MODEL) env.model = process.env.CLOUDORDER_MODEL || process.env.MINIAGENT_MODEL;
+  if (process.env.CLOUDORDER_STREAM || process.env.MINIAGENT_STREAM) {
+    env.stream = (process.env.CLOUDORDER_STREAM || process.env.MINIAGENT_STREAM) !== '0';
+  }
 
   const candidates = [configPath, path.join(ROOT, 'config.json')].filter(Boolean);
   let file = {};

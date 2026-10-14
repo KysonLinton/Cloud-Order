@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** MiniAgent 入口：CLI / Web 两种运行方式 */
+/** CloudOrder（穿搭管家）入口：CLI / Web 两种运行方式 */
 import process from 'node:process';
 import { loadConfig, ensureDirs, hasApiKey } from './config.js';
 import { createRegistry } from './registry.js';
@@ -8,7 +8,7 @@ import { createCliUi, runSetupWizard } from './ui/cli.js';
 import { color } from './utils.js';
 
 const HELP = `
-${color.bold('MiniAgent')} — 本地运行的轻量智能体（对话 + 工具 + 技能 + 插件）
+${color.bold('CloudOrder')} — 本地运行的轻量智能体（对话 + 工具 + 技能 + 插件）
 
 用法:
   node src/index.js                 启动交互式对话
@@ -29,7 +29,7 @@ ${color.bold('MiniAgent')} — 本地运行的轻量智能体（对话 + 工具 
   --auto             自动批准所有工具（谨慎）
 
 也可用环境变量:
-  MINIAGENT_API_KEY / MINIAGENT_BASE_URL / MINIAGENT_MODEL
+  CLOUDORDER_API_KEY / CLOUDORDER_BASE_URL / CLOUDORDER_MODEL
   （OPENAI_API_KEY / OPENAI_BASE_URL 同样被识别）
 `;
 
@@ -274,6 +274,6 @@ async function checkConfig(config, registry) {
 
 main().catch((err) => {
   console.error(color.red(`\n出错：${err.message}`));
-  if (process.env.MINIAGENT_DEBUG) console.error(err.stack);
+  if (process.env.CLOUDORDER_DEBUG || process.env.MINIAGENT_DEBUG) console.error(err.stack);
   process.exit(1);
 });
