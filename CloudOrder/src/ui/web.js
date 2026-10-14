@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { PUBLIC_DIR } from '../config.js';
 import { Agent } from '../agent.js';
 import { color } from '../utils.js';
+import { locateBrief } from '../tools/location.js';
 
 export async function startWebServer({ config, registry }) {
   const port = Number(config.port || 8787);
@@ -74,6 +75,15 @@ export async function startWebServer({ config, registry }) {
         skills: [...registry.skills.values()].map((s) => ({ name: s.name, description: s.description })),
         plugins: registry.plugins.map((p) => ({ name: p.name, description: p.description, tools: p.tools }))
       });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/location-weather') {
+      try {
+        const data = await locateBrief({ timeoutMs: Math.min(config.requestTimeoutMs || 15000, 20000) });
+        return json(res, data);
+      } catch (err) {
+        return json(res, { error: `定位/天气获取失败：${err.message}` }, 502);
+      }
     }
 
     if (req.method === 'POST' && url.pathname === '/api/chat') {

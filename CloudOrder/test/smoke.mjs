@@ -4,7 +4,8 @@ import { createRegistry } from '../src/registry.js';
 import { Agent } from '../src/agent.js';
 import { assessToolCall, globMatch } from '../src/permissions.js';
 import { parseFrontMatter } from '../src/registry.js';
-import { weatherText, isWet } from '../src/tools/weather.js';
+import { weatherText, isWet, fetchWeatherSummary } from '../src/tools/weather.js';
+import { locateBrief, reverseGeocode, locateByIp } from '../src/tools/location.js';
 
 let pass = 0;
 let fail = 0;
@@ -32,6 +33,7 @@ check('已加载示例插件', registry.plugins.length >= 2, `实际 ${registry.
 check('插件工具已注册', registry.tools.has('now_time') && registry.tools.has('git_status'));
 check('天气工具已注册', registry.tools.has('get_weather') && registry.tools.has('get_weather_forecast') && registry.tools.has('geocode_city'));
 check('IP 定位工具已注册', registry.tools.has('get_ip_location'));
+check('位置/天气模块导出可用', typeof locateBrief === 'function' && typeof reverseGeocode === 'function' && typeof locateByIp === 'function' && typeof fetchWeatherSummary === 'function');
 check('天气技能已加载', [...registry.skills.keys()].includes('weather-dressing'));
 check('load_skill 能看到技能', [...registry.skills.keys()].includes('summarize-file'));
 

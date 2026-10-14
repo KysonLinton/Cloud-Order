@@ -224,6 +224,47 @@ async function wttrCurrent(query, timeoutMs) {
   return `【实时天气】(wttr.in 兜底) ${place}\n  ${parts.filter(Boolean).join('，')}`;
 }
 
+/**
+ * 结构化获取某地当日天气（供 Web 模块渲染，避免解析文本）。
+ * @param {{latitude:number, longitude:number, city?:string, timeoutMs?:number}} opts
+ */
+export async function fetchWeatherSummary(opts = {}) {
+  const timeoutMs = Math.min(opts.timeoutMs || 20000, 30000);
+  const { latitude, longitude } = opts;
+  const url =
+    `${FORECAST_API}?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}` +
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset' +
+    '&forecast_days=1&timezone=auto';
+  const json = await httpJson(url, timeoutMs);
+  const cur = json.current || {};
+  const daily = json.daily || {};
+  return {
+    place: opts.city || '',
+    condition: weatherText(cur.weather_code),
+    weatherCode: Number(cur.weather_code),
+    temperature: round(cur.temperature_2m, 1),
+    apparentTemperature: round(cur.apparent_temperature, 1),
+    humidity: round(cur.relative_humidity_2m),
+    cloudCover: round(cur.cloud_cover),
+    precipitation: round(cur.precipitation, 1),
+    windSpeed: round(cur.wind_speed_10m),
+    windGusts: round(cur.wind_gusts_10m),
+    windDirection: windDir(cur.wind_direction_10m),
+    isDay: cur.is_day === 1,
+    tempMin: round(daily.temperature_2m_min?.[0], 1),
+    tempMax: round(daily.temperature_2m_max?.[0], 1),
+    precipitationProbability: round(daily.precipitation_probability_max?.[0]),
+    uvIndex: round(daily.uv_index_max?.[0], 1),
+    sunrise: daily.sunrise?.[0] || '',
+    sunset: daily.sunset?.[0] || '',
+    observedAt: cur.time || '',
+    hint: (clothingHint(cur, daily) || '').replace(/^\s*穿衣提示：/, '') || '',
+    isWet: isWet(cur.weather_code) || Number(cur.precipitation || 0) > 0,
+    source: 'Open-Meteo'
+  };
+}
+
 export function createWeatherTools(config) {
   const list = new Map();
   const timeoutMs = Math.min(config.requestTimeoutMs || 20000, 30000);
@@ -324,3 +365,4 @@ export function createWeatherTools(config) {
 }
 
 export { weatherText, isWet };
+export { clothingHint };

@@ -10,6 +10,7 @@
  */
 const IPWHOIS = 'https://ipwho.is/';
 const IPINFO = 'https://ipinfo.io/json';
+const REVERSE_GEOCODE = 'https://api.bigdatacloud.net/data/reverse-geocode-client';
 
 async function httpJson(url, timeoutMs = 15000) {
   const controller = new AbortController();
@@ -70,6 +71,67 @@ export async function locateByIp(timeoutMs = 15000) {
   }
 }
 
+/** 反向地理编码：经纬度 -> 省/市/区县（BigDataCloud，免密钥，zh-Hans） */
+export async function reverseGeocode(lat, lon, timeoutMs = 15000) {
+  const url =
+    `${REVERSE_GEOCODE}?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=zh-Hans`;
+  const j = await httpJson(url, timeoutMs);
+  if (!j) return null;
+  return {
+    country: j.countryName || '',
+    countryCode: j.countryCode || '',
+    province: j.principalSubdivision || '',
+    provinceCode: j.principalSubdivisionCode || '',
+    city: j.city || '',
+    locality: j.locality || '',
+    postcode: j.postcode || ''
+  };
+}
+
+/**
+ * 汇总「位置 + 当前天气」，供 Web 首页模块使用。
+ * 位置精确到市/区级，天气为当日实时 + 今日温区。
+ * @param {{timeoutMs?:number}} [opts]
+ */
+export async function locateBrief(opts = {}) {
+  const timeoutMs = Math.min(opts.timeoutMs || 15000, 30000);
+  const loc = await locateByIp(timeoutMs);
+  const [geo, weather] = await Promise.all([
+    reverseGeocode(loc.latitude, loc.longitude, timeoutMs).catch(() => null),
+    (async () => {
+      const { fetchWeatherSummary } = await import('./weather.js');
+      return await fetchWeatherSummary({
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        city: loc.city,
+        timeoutMs
+      });
+    })().catch((err) => ({ error: `天气获取失败：${err.message}` }))
+  ]);
+
+  // 拼一个尽量完整的「市 · 区」标签（去重，如「北京市, 北京市」压缩为「北京市」）
+  const parts = [geo?.province, geo?.city, geo?.locality].filter(Boolean);
+  const dedup = parts.filter((v, i) => parts.indexOf(v) === i);
+  const shortLabel = dedup.length ? dedup.join(' · ') : loc.label;
+
+  return {
+    ip: loc.ip,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    timezone: loc.timezone,
+    isp: loc.isp,
+    source: loc.source,
+    city: geo?.city || loc.city || '',
+    district: geo?.locality || '',
+    province: geo?.province || loc.region || '',
+    country: geo?.country || loc.country || '',
+    countryCode: geo?.countryCode || '',
+    label: shortLabel,
+    weather,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 export function createLocationTools(config) {
   const list = new Map();
   const timeoutMs = Math.min(config.requestTimeoutMs || 15000, 30000);
@@ -92,15 +154,19 @@ export function createLocationTools(config) {
     safeByDefault: true,
     async run(args) {
       const loc = await locateByIp(timeoutMs);
+      const detailed = await reverseGeocode(loc.latitude, loc.longitude, timeoutMs).catch(() => null);
       void args;
+      const region = detailed?.locality || detailed?.city || loc.city;
+      const label = [loc.city, region, loc.country].filter((v, i, a) => v && a.indexOf(v) === i).join(', ');
       return [
-        `【IP 定位】${loc.label}`,
+        `【IP 定位】${label || loc.label}`,
         `  IP：${loc.ip}`,
         `  坐标：纬度 ${loc.latitude}，经度 ${loc.longitude}`,
+        region ? `  城市 / 区县：${loc.city || detailed?.city || '-'} / ${region}` : '',
         loc.timezone ? `  时区：${loc.timezone}` : '',
         loc.isp ? `  运营商：${loc.isp}` : '',
-        `  数据源：${loc.source}`,
-        '  （基于公网出口 IP，精度为城市级；若使用代理/VPN，结果可能是出口节点位置）'
+        `  数据源：${loc.source}${detailed ? ' + BigDataCloud 反向地理编码' : ''}`,
+        '  （基于公网出口 IP，精度为城市/区级；若使用代理/VPN，结果可能是出口节点位置）'
       ]
         .filter(Boolean)
         .join('\n');

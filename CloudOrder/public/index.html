@@ -121,12 +121,29 @@
       .panel .item { font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
       .panel .item .d { color: var(--dim); }
       .badge { font-size: 10.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--dim); }
+      /* 位置 / 天气模块 */
+      .env-card {
+        display: flex; align-items: center; gap: 12px;
+        background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+        padding: 5px 12px; cursor: pointer; user-select: none; transition: border-color .15s;
+      }
+      .env-card:hover { border-color: var(--accent); }
+      .env-card .temp { font-size: 19px; font-weight: 700; line-height: 1; }
+      .env-card .wx { display: flex; flex-direction: column; line-height: 1.25; }
+      .env-card .cond { font-size: 12.5px; }
+      .env-card .loc { font-size: 11px; color: var(--dim); }
+      .env-card .ico { font-size: 22px; }
+      .env-card .spin { color: var(--dim); font-size: 12px; }
+      .env-card .extra { font-size: 11px; color: var(--dim); border-left: 1px solid var(--line); padding-left: 12px; display: flex; flex-direction: column; line-height: 1.35; }
+      .env-card.err { border-color: var(--red); color: var(--dim); }
+      @media (max-width: 720px) { .env-card .extra { display: none; } }
     </style>
   </head>
   <body>
     <header>
       <span class="brand">穿搭管家</span>
       <span class="meta" id="meta">加载中…</span>
+      <div class="env-card" id="env-card" title="点击刷新位置与天气"><span class="spin">定位中…</span></div>
       <span class="spacer"></span>
       <button id="btn-panel">工具/技能</button>
       <button id="btn-reset">新会话</button>
@@ -179,6 +196,62 @@
       }
 
       $('#btn-panel').onclick = () => $('#panel').classList.toggle('open');
+
+      // ---- 位置 / 天气模块 ----
+      const wxIcon = (code, isDay) => {
+        const c = Number(code);
+        if (c === 0) return isDay === false ? '🌙' : '☀️';
+        if (c === 1 || c === 2) return isDay === false ? '🌤' : '🌤';
+        if (c === 3) return '☁️';
+        if (c === 45 || c === 48) return '🌫';
+        if (c >= 51 && c <= 67) return '🌦';
+        if (c >= 71 && c <= 77) return '🌨';
+        if (c >= 80 && c <= 82) return '🌧';
+        if (c >= 85 && c <= 86) return '🌨';
+        if (c >= 95) return '⛈';
+        return '🌡';
+      };
+
+      async function loadEnv() {
+        const card = $('#env-card');
+        card.classList.remove('err');
+        card.innerHTML = '<span class="spin">定位中…</span>';
+        try {
+          const r = await fetch('/api/location-weather');
+          const d = await r.json();
+          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+          const w = d.weather || {};
+          const loc = [d.city, d.district].filter(Boolean).join(' · ') || d.label || '未知位置';
+          if (w.error) {
+            card.classList.add('err');
+            card.innerHTML =
+              `<span class="ico">📍</span><div class="wx"><span class="cond">${esc(loc)}</span>` +
+              `<span class="loc">天气获取失败</span></div>`;
+            return;
+          }
+          const temp = w.temperature != null ? `${Math.round(w.temperature)}°` : '--';
+          const extra = [
+            w.tempMin != null && w.tempMax != null ? `今日 ${Math.round(w.tempMin)}~${Math.round(w.tempMax)}°C` : '',
+            w.apparentTemperature != null ? `体感 ${Math.round(w.apparentTemperature)}°C` : '',
+            w.precipitationProbability != null ? `降水 ${Math.round(w.precipitationProbability)}%` : '',
+            w.windSpeed != null ? `风 ${w.windDirection || ''}${Math.round(w.windSpeed)} km/h` : '',
+            w.humidity != null ? `湿度 ${Math.round(w.humidity)}%` : '',
+            w.uvIndex != null ? `紫外线 ${w.uvIndex}` : ''
+          ].filter(Boolean);
+          card.innerHTML =
+            `<span class="ico">${wxIcon(w.weatherCode, w.isDay)}</span>` +
+            `<span class="temp">${temp}</span>` +
+            `<div class="wx"><span class="cond">${esc(w.condition || '')}</span>` +
+            `<span class="loc">📍 ${esc(loc)}</span></div>` +
+            (extra.length ? `<div class="extra">${extra.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : '');
+          card.title = (w.hint ? `穿衣提示：${w.hint}\n` : '') + '点击刷新位置与天气';
+        } catch (err) {
+          card.classList.add('err');
+          card.innerHTML = `<span class="ico">📍</span><div class="wx"><span class="cond">位置/天气不可用</span><span class="loc">${esc(err.message)}</span></div>`;
+        }
+      }
+      $('#env-card').onclick = loadEnv;
+      loadEnv();
 
       function esc(s) {
         return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);

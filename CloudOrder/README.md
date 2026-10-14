@@ -92,6 +92,19 @@ node src/index.js --web --port 9000
 | `get_weather_forecast` | 低 | 未来 1-16 天预报（免密钥） |
 | `geocode_city` | 低 | 城市名 → 经纬度/时区 |
 | `get_ip_location` | 低 | 按公网 IP 获取大致地理位置（免密钥） |
+
+### 网页版位置/天气模块
+
+网页版顶部有一个实时模块，自动展示**当前所在位置（精确到市/区级）**与**当日天气、气温**：
+
+```
+🌙 18°  晴
+         📍 北京市 · 东城区   今日 10~22°C · 体感 19°C · 降水 0% · 风 东北 2 km/h · 湿度 67% · 紫外线 4.5
+```
+
+- 数据来源：IP 定位（ipwho.is）+ 反向地理编码（BigDataCloud，市/区级）+ 当日天气（Open-Meteo）
+- 点击卡片即可刷新；鼠标悬停可看当天的「穿衣提示」
+- 后端端点：`GET /api/location-weather`（返回结构化 JSON）
 | `load_skill` | 低 | 加载技能完整说明 |
 | `list_skills` | 低 | 列出已安装技能 |
 
