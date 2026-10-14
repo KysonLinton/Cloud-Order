@@ -7,6 +7,8 @@
  *
  * 不需要 API Key，直接可用。
  */
+import { locateByIp } from './location.js';
+
 const GEO_API = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 const WWTR_CURRENT = (q) => `https://wttr.in/${encodeURIComponent(q)}?format=j1&lang=zh`;
@@ -98,7 +100,7 @@ async function geocode(name, timeoutMs) {
   };
 }
 
-/** 解析定位参数：优先经纬度，否则按城市名地理编码 */
+/** 解析定位参数：优先经纬度，其次城市名地理编码，都缺失时按本机公网 IP 自动定位 */
 async function resolveLocation(args, timeoutMs) {
   const hasCoords = args.latitude !== undefined && args.longitude !== undefined;
   if (hasCoords) {
@@ -110,8 +112,16 @@ async function resolveLocation(args, timeoutMs) {
     return { name: args.city ? String(args.city) : `${lat}, ${lon}`, label: args.city ? String(args.city) : `${lat}, ${lon}`, latitude: lat, longitude: lon, timezone: 'auto' };
   }
   const city = String(args.city || args.location || '').trim();
-  if (!city) throw new Error('请提供 city（城市名），或同时提供 latitude 与 longitude');
-  return await geocode(city, timeoutMs);
+  if (city) return await geocode(city, timeoutMs);
+  // 未指定城市：按本机公网 IP 自动定位（城市级）
+  const ipLoc = await locateByIp(timeoutMs);
+  return {
+    name: ipLoc.city || ipLoc.label,
+    label: ipLoc.city ? `${ipLoc.label}（按本机 IP 自动定位）` : `${ipLoc.label}（按本机 IP 自动定位）`,
+    latitude: ipLoc.latitude,
+    longitude: ipLoc.longitude,
+    timezone: ipLoc.timezone || 'auto'
+  };
 }
 
 function formatCurrent(loc, cur, daily) {
@@ -226,7 +236,7 @@ export function createWeatherTools(config) {
     parameters: {
       type: 'object',
       properties: {
-        city: { type: 'string', description: '城市名，如「北京」「上海」「杭州」，支持中文/英文' },
+        city: { type: 'string', description: '城市名，如「北京」「上海」「杭州」，支持中文/英文；留空则按本机公网 IP 自动定位' },
         latitude: { type: 'number', description: '纬度（与 longitude 一起使用时优先于 city）' },
         longitude: { type: 'number', description: '经度' }
       }
@@ -261,7 +271,7 @@ export function createWeatherTools(config) {
     parameters: {
       type: 'object',
       properties: {
-        city: { type: 'string', description: '城市名，如「北京」「成都」' },
+        city: { type: 'string', description: '城市名，如「北京」「成都」；留空则按本机公网 IP 自动定位' },
         days: { type: 'integer', description: '预报天数，1-16，默认 3' },
         latitude: { type: 'number', description: '纬度（可选，需与 longitude 成对）' },
         longitude: { type: 'number', description: '经度（可选）' }

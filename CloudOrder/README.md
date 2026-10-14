@@ -91,6 +91,7 @@ node src/index.js --web --port 9000
 | `get_weather` | 低 | 实时天气 + 今日概况（免密钥，Open-Meteo） |
 | `get_weather_forecast` | 低 | 未来 1-16 天预报（免密钥） |
 | `geocode_city` | 低 | 城市名 → 经纬度/时区 |
+| `get_ip_location` | 低 | 按公网 IP 获取大致地理位置（免密钥） |
 | `load_skill` | 低 | 加载技能完整说明 |
 | `list_skills` | 低 | 列出已安装技能 |
 
@@ -109,6 +110,13 @@ node src/index.js -p "北京今天多少度，适合穿什么"
 | `get_weather` | 实时天气 + 今日温区/降水/紫外线，并附带一条「穿衣提示」 |
 | `get_weather_forecast` | 未来 1-16 天预报（温度、天气、降水概率、风、紫外线） |
 | `geocode_city` | 城市名解析为经纬度与时区，用于核对位置 |
+| `get_ip_location` | 按本机公网 IP 获取城市、经纬度、时区（不传城市名时 `get_weather` 会自动调用它） |
+
+不想报城市名时，直接说「按我的位置」即可：`get_weather` / `get_weather_forecast` 未传 `city` 时会自动用 IP 定位。IP 定位精度为**城市级**，且若开了代理/VPN，结果会是出口节点所在地。
+
+```powershell
+node src/index.js -p "不用我说城市，按我的位置看今天穿什么"
+```
 
 搭配技能 `weather-dressing` 使用：模型会先查真实天气（体感温度、降水、风、紫外线、温差），再按温度带与天气修正给出可执行方案。
 
@@ -260,7 +268,7 @@ CloudOrder/
 │   ├── permissions.js      权限与风险判定
 │   ├── session.js          会话持久化
 │   ├── utils.js            公共工具
-│   ├── tools/              内置工具（含 weather.js 天气查询）
+│   ├── tools/              内置工具（含 weather.js 天气、location.js IP 定位）
 │   ├── plugins/loader.js   插件加载器
 │   └── ui/                 CLI 与 Web 界面
 └── test/                   测试与 mock 模型服务

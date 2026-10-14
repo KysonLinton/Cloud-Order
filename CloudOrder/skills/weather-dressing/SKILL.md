@@ -22,6 +22,7 @@ version: 1.0.0
    - 今天 → `get_weather`（含今日温区、降水、紫外线、风力）
    - 未来 1-16 天 → `get_weather_forecast`
    - 城市名不确定或想核对位置 → `geocode_city`
+   - **用户不愿/说不出城市**（如「按我的位置」「我这边」）→ 直接不传 `city` 调 `get_weather`，它会按本机公网 IP 自动定位；也可先用 `get_ip_location` 拿到城市与坐标再传 `latitude` / `longitude`。
    - 用户给了经纬度就直接传 `latitude` / `longitude`，跳过地理编码。
 2. **读天气、提取关键因子**（缺一不可地过一遍）：
    - 温度与体感温度（体感更重要，风大会更低）

@@ -2,6 +2,7 @@
 import { createReadTools, createWriteTools, createExecTools } from './files.js';
 import { createWebTools } from './web.js';
 import { createWeatherTools } from './weather.js';
+import { createLocationTools } from './location.js';
 import { createSkillTools } from './skills.js';
 
 /**
@@ -15,6 +16,7 @@ export function createBuiltinTools(config, skillsRef = { current: new Map() }) {
     ...createExecTools(config),
     ...createWebTools(config),
     ...createWeatherTools(config),
+    ...createLocationTools(config),
     ...createSkillTools(config, skillsRef)
   ]);
   return merged;
