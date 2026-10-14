@@ -149,7 +149,7 @@ export async function startWebServer({ config, registry }) {
 
   const addr = `http://127.0.0.1:${port}`;
   console.log('');
-  console.log(color.bold(color.magenta('  MiniAgent Web')) + color.dim(` 已启动: ${addr}`));
+  console.log(color.bold(color.magenta('  穿搭管家 Web')) + color.dim(` 已启动: ${addr}`));
   console.log(color.dim(`  模型 ${config.model} · 工作区 ${config.workspace}`));
   console.log(color.dim(`  工具 ${registry.tools.size} · 技能 ${registry.skills.size} · 插件 ${registry.plugins.length}`));
   console.log(color.dim('  在浏览器打开上面的地址即可对话。Ctrl+C 停止服务。\n'));

@@ -256,7 +256,7 @@ export function createCliUi({ config, registry, agent }) {
 
   function printBanner() {
     line('');
-    line(color.bold(color.magenta('  MiniAgent')) + color.dim('  本地智能体 · 对话 + 工具 + 技能 + 插件'));
+    line(color.bold(color.magenta('  穿搭管家')) + color.dim('  本地智能体 · 对话 + 工具 + 技能 + 插件'));
     line(color.dim(`  模型   ${config.model} @ ${config.baseUrl}`));
     line(color.dim(`  工作区 ${config.workspace}`));
     line(

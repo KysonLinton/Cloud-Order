@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MiniAgent</title>
+    <title>穿搭管家 · MiniAgent</title>
     <style>
       :root {
         --bg: #0f1116;
@@ -125,7 +125,7 @@
   </head>
   <body>
     <header>
-      <span class="brand">MiniAgent</span>
+      <span class="brand">穿搭管家</span>
       <span class="meta" id="meta">加载中…</span>
       <span class="spacer"></span>
       <button id="btn-panel">工具/技能</button>
@@ -187,7 +187,7 @@
       function addMsg(role, text) {
         const div = document.createElement('div');
         div.className = `msg ${role}`;
-        div.innerHTML = `<div class="who">${role === 'user' ? '你' : 'MiniAgent'}</div><div class="bubble"></div>`;
+        div.innerHTML = `<div class="who">${role === 'user' ? '你' : '穿搭管家'}</div><div class="bubble"></div>`;
         div.querySelector('.bubble').textContent = text || '';
         log.appendChild(div);
         scroll();
