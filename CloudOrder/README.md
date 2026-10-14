@@ -88,38 +88,54 @@ node src/index.js --web --port 9000
 | `run_command` | 高 | 执行 shell 命令（默认每次确认） |
 | `fetch_url` | 低 | 抓取网页并转纯文本 |
 | `web_search` | 低 | 联网搜索（需配置 Tavily/Brave 密钥） |
+| `get_weather` | 低 | 实时天气 + 今日概况（免密钥，Open-Meteo） |
+| `get_weather_forecast` | 低 | 未来 1-16 天预报（免密钥） |
+| `geocode_city` | 低 | 城市名 → 经纬度/时区 |
 | `load_skill` | 低 | 加载技能完整说明 |
 | `list_skills` | 低 | 列出已安装技能 |
 
 ---
 
+## 天气查询（无需密钥）
+
+内置三个天气工具，数据来自 [Open-Meteo](https://open-meteo.com)（实时不可用时自动回退到 wttr.in）：
+
+```powershell
+node src/index.js -p "北京今天多少度，适合穿什么"
+```
+
+| 工具 | 作用 |
+| --- | --- |
+| `get_weather` | 实时天气 + 今日温区/降水/紫外线，并附带一条「穿衣提示」 |
+| `get_weather_forecast` | 未来 1-16 天预报（温度、天气、降水概率、风、紫外线） |
+| `geocode_city` | 城市名解析为经纬度与时区，用于核对位置 |
+
+搭配技能 `weather-dressing` 使用：模型会先查真实天气（体感温度、降水、风、紫外线、温差），再按温度带与天气修正给出可执行方案。
+
+---
+
 ## 写一个插件
 
-在 `plugins/` 下新建 `weather.mjs`：
+在 `plugins/` 下新建 `quote.mjs`：
 
 ```js
 export default {
-  name: 'weather',
-  description: '天气查询',
-  systemPrompt: '你还可以查询天气。',   // 可选：追加到系统提示
+  name: 'quote',
+  description: '每日一言',
+  systemPrompt: '你还能获取每日一言。',   // 可选：追加到系统提示
 
   tools: [
     {
-      name: 'get_weather',
-      description: '查询指定城市当前天气',
-      parameters: {
-        type: 'object',
-        properties: { city: { type: 'string', description: '城市名' } },
-        required: ['city']
-      },
+      name: 'random_quote',
+      description: '随机返回一条名言',
+      parameters: { type: 'object', properties: {} },
       risk: 'low',              // low | medium | high
       safeByDefault: true,      // 低风险时免确认
       async run(args, ctx) {
         // ctx = { config, workspace, log, fetch, env }
-        ctx.log('查询', args.city);
-        const res = await ctx.fetch(`https://wttr.in/${encodeURIComponent(args.city)}?format=j1`);
+        const res = await ctx.fetch('https://api.quotable.io/random');
         const json = await res.json();
-        return `${args.city}: ${json.current_condition[0].temp_C}°C，${json.current_condition[0].weatherDesc[0].value}`;
+        return `“${json.content}” —— ${json.author}`;
       }
     }
   ]
@@ -231,6 +247,7 @@ CloudOrder/
 │   ├── style-vintage/      复古 / 学院
 │   ├── style-date/         约会 / 社交
 │   ├── style-resort/       度假 / 旅行
+│   ├── weather-dressing/   结合天气的穿搭
 │   ├── summarize-file/
 │   └── commit-message/
 ├── public/index.html       Web 界面
@@ -243,7 +260,7 @@ CloudOrder/
 │   ├── permissions.js      权限与风险判定
 │   ├── session.js          会话持久化
 │   ├── utils.js            公共工具
-│   ├── tools/              内置工具
+│   ├── tools/              内置工具（含 weather.js 天气查询）
 │   ├── plugins/loader.js   插件加载器
 │   └── ui/                 CLI 与 Web 界面
 └── test/                   测试与 mock 模型服务

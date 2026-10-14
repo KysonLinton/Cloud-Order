@@ -1,6 +1,7 @@
 /** 内建工具汇总 */
 import { createReadTools, createWriteTools, createExecTools } from './files.js';
 import { createWebTools } from './web.js';
+import { createWeatherTools } from './weather.js';
 import { createSkillTools } from './skills.js';
 
 /**
@@ -13,6 +14,7 @@ export function createBuiltinTools(config, skillsRef = { current: new Map() }) {
     ...createWriteTools(config),
     ...createExecTools(config),
     ...createWebTools(config),
+    ...createWeatherTools(config),
     ...createSkillTools(config, skillsRef)
   ]);
   return merged;

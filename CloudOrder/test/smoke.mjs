@@ -4,6 +4,7 @@ import { createRegistry } from '../src/registry.js';
 import { Agent } from '../src/agent.js';
 import { assessToolCall, globMatch } from '../src/permissions.js';
 import { parseFrontMatter } from '../src/registry.js';
+import { weatherText, isWet } from '../src/tools/weather.js';
 
 let pass = 0;
 let fail = 0;
@@ -29,9 +30,17 @@ check('技能工具存在', registry.tools.has('load_skill'));
 check('已加载示例技能', registry.skills.size >= 2, `实际 ${registry.skills.size}`);
 check('已加载示例插件', registry.plugins.length >= 2, `实际 ${registry.plugins.length}`);
 check('插件工具已注册', registry.tools.has('now_time') && registry.tools.has('git_status'));
+check('天气工具已注册', registry.tools.has('get_weather') && registry.tools.has('get_weather_forecast') && registry.tools.has('geocode_city'));
+check('天气技能已加载', [...registry.skills.keys()].includes('weather-dressing'));
 check('load_skill 能看到技能', [...registry.skills.keys()].includes('summarize-file'));
 
-console.log('\n[3] front matter 解析');
+console.log('\n[3] 天气代码映射');
+check('晴 -> 0', weatherText(0) === '晴');
+check('小雨 -> 61', weatherText(61) === '小雨');
+check('未知代码兜底', weatherText(1234).includes('1234'));
+check('降水类代码识别', isWet(61) && isWet(80) && isWet(95) && !isWet(0) && !isWet(2));
+
+console.log('\n[3b] front matter 解析');
 const fm = parseFrontMatter('---\nname: demo\ndescription: "关于 演示"\n---\n正文');
 check('解析 name', fm.data.name === 'demo');
 check('解析带引号 description', fm.data.description === '关于 演示');
