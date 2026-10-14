@@ -5,10 +5,11 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { PUBLIC_DIR } from '../config.js';
+import { PUBLIC_DIR, WARDROBE_IMAGE_DIR } from '../config.js';
 import { Agent } from '../agent.js';
 import { color } from '../utils.js';
 import { locateBrief } from '../tools/location.js';
+import * as wardrobe from '../wardrobe.js';
 
 export async function startWebServer({ config, registry }) {
   const port = Number(config.port || 8787);
@@ -84,6 +85,11 @@ export async function startWebServer({ config, registry }) {
       } catch (err) {
         return json(res, { error: `定位/天气获取失败：${err.message}` }, 502);
       }
+    }
+
+    // ---- 衣柜（Wardrobe）----
+    if (url.pathname === '/api/wardrobe' || url.pathname.startsWith('/api/wardrobe/')) {
+      return handleWardrobe(req, res, url);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/chat') {
@@ -189,12 +195,95 @@ function json(res, obj, status = 200) {
   res.end(body);
 }
 
+/** 衣柜接口：列表 / 新增 / 修改 / 删除 / 图片读取 */
+async function handleWardrobe(req, res, url) {
+  const parts = url.pathname.split('/').filter(Boolean);
+  // /api/wardrobe            -> parts: ['api','wardrobe']
+  // /api/wardrobe/:id        -> parts: ['api','wardrobe','<id>']
+  // /api/wardrobe/image/:file-> parts: ['api','wardrobe','image','<file>']
+  const sub = parts[2];
+
+  // 图片：GET /api/wardrobe/image/<file>
+  if (sub === 'image') {
+    if (req.method !== 'GET') return json(res, { error: 'method not allowed' }, 405);
+    const file = path.basename(parts.slice(3).join('/') || '');
+    const abs = path.join(WARDROBE_IMAGE_DIR, file);
+    if (!abs.startsWith(WARDROBE_IMAGE_DIR) || !file) return json(res, { error: 'forbidden' }, 403);
+    const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+    return serveFile(abs, res, types);
+  }
+
+  try {
+    // 列表
+    if (req.method === 'GET' && !sub) {
+      return json(res, {
+        items: wardrobe.listAll(),
+        stats: wardrobe.stats(),
+        categories: wardrobe.CATEGORIES,
+        seasons: wardrobe.SEASONS
+      });
+    }
+
+    // 新增
+    if (req.method === 'POST' && !sub) {
+      const body = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        return json(res, { error: 'body 必须是 JSON' }, 400);
+      }
+      let image = '';
+      if (payload.image && String(payload.image).startsWith('data:')) {
+        image = wardrobe.saveImage(String(payload.image));
+      }
+      const item = wardrobe.addItem({ ...payload, image });
+      return json(res, { ok: true, item }, 201);
+    }
+
+    // 修改
+    if (req.method === 'PUT' && sub) {
+      const id = decodeURIComponent(sub);
+      const body = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        return json(res, { error: 'body 必须是 JSON' }, 400);
+      }
+      const patch = { ...payload };
+      if (payload.image && String(payload.image).startsWith('data:')) {
+        patch.image = wardrobe.saveImage(String(payload.image));
+      } else if (payload.image === null || payload.image === '') {
+        // 显式清除图片
+        const old = wardrobe.getItem(id);
+        if (old?.image) wardrobe.deleteImage(old.image);
+        patch.image = '';
+      } else {
+        delete patch.image;
+      }
+      const item = wardrobe.updateItem(id, patch);
+      return json(res, { ok: true, item });
+    }
+
+    // 删除
+    if (req.method === 'DELETE' && sub) {
+      const removed = wardrobe.removeItem(decodeURIComponent(sub));
+      return json(res, { ok: true, removed: removed.id });
+    }
+
+    return json(res, { error: 'not found' }, 404);
+  } catch (err) {
+    return json(res, { error: err.message }, 400);
+  }
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (c) => {
       data += c;
-      if (data.length > 5e6) {
+      if (data.length > 20e6) {
         reject(new Error('请求体过大'));
         req.destroy();
       }

@@ -6,6 +6,7 @@ import { assessToolCall, globMatch } from '../src/permissions.js';
 import { parseFrontMatter } from '../src/registry.js';
 import { weatherText, isWet, fetchWeatherSummary } from '../src/tools/weather.js';
 import { locateBrief, reverseGeocode, locateByIp } from '../src/tools/location.js';
+import * as wardrobe from '../src/wardrobe.js';
 
 let pass = 0;
 let fail = 0;
@@ -36,6 +37,15 @@ check('IP 定位工具已注册', registry.tools.has('get_ip_location'));
 check('位置/天气模块导出可用', typeof locateBrief === 'function' && typeof reverseGeocode === 'function' && typeof locateByIp === 'function' && typeof fetchWeatherSummary === 'function');
 check('天气技能已加载', [...registry.skills.keys()].includes('weather-dressing'));
 check('load_skill 能看到技能', [...registry.skills.keys()].includes('summarize-file'));
+check(
+  '衣柜工具已注册',
+  registry.tools.has('wardrobe_list') &&
+    registry.tools.has('wardrobe_get') &&
+    registry.tools.has('wardrobe_add') &&
+    registry.tools.has('wardrobe_update') &&
+    registry.tools.has('wardrobe_remove')
+);
+check('衣柜数据层导出可用', typeof wardrobe.addItem === 'function' && typeof wardrobe.listItems === 'function');
 
 console.log('\n[3] 天气代码映射');
 check('晴 -> 0', weatherText(0) === '晴');
@@ -85,6 +95,31 @@ const calcOut = await registry.tools.get('calculate').run({ expression: '(12+8)*
 check('插件工具 calculate 正确', calcOut.includes('8.5714'), calcOut);
 const timeOut = await registry.tools.get('now_time').run({});
 check('插件工具 now_time 返回时间', /\d{4}/.test(timeOut), timeOut);
+
+console.log('\n[6b] 衣柜数据库（增/查/改/删）');
+const before = wardrobe.listAll().length;
+check('衣柜初始可枚举', Array.isArray(wardrobe.listAll()));
+const added = wardrobe.addItem({
+  name: '冒烟测试-白衬衫',
+  category: '衬衫',
+  colors: '白, 米白',
+  material: '棉',
+  style: ['简约'],
+  seasons: ['春', '秋'],
+  fit: '修身'
+});
+check('新增生成 id', typeof added.id === 'string' && added.id.startsWith('w_'));
+check('颜色解析为数组', Array.isArray(added.colors) && added.colors.length === 2, JSON.stringify(added.colors));
+check('可按类别筛选到', wardrobe.listItems({ category: '衬衫' }).some((it) => it.id === added.id));
+check('可按关键词搜索到', wardrobe.listItems({ keyword: '冒烟测试' }).some((it) => it.id === added.id));
+const bumped = wardrobe.updateItem(added.id, { material: '亚麻', colors: ['白'] });
+check('修改生效', bumped.material === '亚麻' && bumped.colors.length === 1);
+const wdListOut = await registry.tools.get('wardrobe_list').run({ keyword: '冒烟测试' });
+check('wardrobe_list 输出单品', wdListOut.includes('冒烟测试-白衬衫'));
+const getOut = await registry.tools.get('wardrobe_get').run({ id: added.id });
+check('wardrobe_get 输出完整参数', getOut.includes('亚麻') && getOut.includes('修身'));
+wardrobe.removeItem(added.id);
+check('删除后恢复原有数量', wardrobe.listAll().length === before, `now ${wardrobe.listAll().length}, before ${before}`);
 
 console.log('\n[7] Agent 循环（假模型，验证 tool_calls 编排）');
 let calls = 0;
