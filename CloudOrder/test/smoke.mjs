@@ -7,6 +7,7 @@ import { parseFrontMatter } from '../src/registry.js';
 import { weatherText, isWet, fetchWeatherSummary } from '../src/tools/weather.js';
 import { locateBrief, reverseGeocode, locateByIp } from '../src/tools/location.js';
 import * as wardrobe from '../src/wardrobe.js';
+import { identifyImage, parseJsonLoose } from '../src/tools/vision.js';
 
 let pass = 0;
 let fail = 0;
@@ -46,6 +47,9 @@ check(
     registry.tools.has('wardrobe_remove')
 );
 check('衣柜数据层导出可用', typeof wardrobe.addItem === 'function' && typeof wardrobe.listItems === 'function');
+check('图片识别工具已注册', registry.tools.has('analyze_image'));
+check('图片识别模块导出可用', typeof identifyImage === 'function' && typeof parseJsonLoose === 'function');
+check('衣物图片识别技能已加载', [...registry.skills.keys()].includes('wardrobe-vision'));
 
 console.log('\n[3] 天气代码映射');
 check('晴 -> 0', weatherText(0) === '晴');

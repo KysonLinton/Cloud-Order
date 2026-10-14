@@ -7,6 +7,7 @@
 - **插件接口**：丢一个 `.mjs` 文件进 `plugins/`，工具自动注册给模型
 - **技能接口**：丢一个含 `SKILL.md` 的文件夹进 `skills/`，按需渐进式加载
 - **本地衣柜**：衣物数据库（材质/颜色/图片…）由你录入，搭配只从衣柜中挑选
+- **图片识别**：识别衣服照片，读出材质/颜色/版型等参数，一键录入衣柜
 - **两种界面**：终端 CLI + 浏览器 Web（都支持流式输出和工具审批）
 - **安全默认**：危险命令直接拦截，写文件/执行命令前必须确认
 
@@ -98,6 +99,7 @@ node src/index.js --web --port 9000
 | `wardrobe_add` | 中 | 新增衣物到衣柜（需确认） |
 | `wardrobe_update` | 中 | 修改衣物参数（需确认） |
 | `wardrobe_remove` | 高 | 删除衣物（需确认） |
+| `analyze_image` | 低 | **识别图片**：`mode=clothing` 读出衣服的名称/类别/颜色/材质/风格/季节/版型/品牌等参数，可直接录入衣柜 |
 | `load_skill` | 低 | 加载技能完整说明 |
 | `list_skills` | 低 | 列出已安装技能 |
 
@@ -138,6 +140,7 @@ node src/index.js --web --port 9000
 | 适合季节 | 勾选 春 / 夏 / 秋 / 冬 |
 | 版型 / 尺码 / 品牌 / 备注 | 可选，填得越全，搭配越准 |
 
+- **AI 识别图片**：录入弹窗里点「🔍 识别图片参数」，会调用多模态模型读出这件衣服的类别、颜色、材质、风格、季节、版型等，自动填进表单（识别不准的字段会提示你核对），核对后保存即可
 - 深链接：浏览器打开 `#wardrobe` 直接展开面板，`#wardrobe/new` 同时打开录入弹窗
 
 ### 数据存放
@@ -165,6 +168,55 @@ node src/index.js --web --port 9000
 | `PUT` | `/api/wardrobe/:id` | 修改单品（只传需改字段） |
 | `DELETE` | `/api/wardrobe/:id` | 删除单品（连图片一并删） |
 | `GET` | `/api/wardrobe/image/:file` | 读取衣物图片 |
+
+---
+
+## 图片识别（analyze_image）
+
+内置 `analyze_image` 工具，调用**支持图片输入的多模态模型**，把一张衣服照片转成可直接录入「衣柜」的结构化参数。
+
+### 用途
+
+| 模式 | 说明 |
+| --- | --- |
+| `clothing`（默认） | 识别衣物，输出 JSON：`name` / `category` / `colors` / `material` / `style` / `seasons` / `fit` / `brand` / `tags` / `notes` / `confidence` / `unsure` |
+| `describe` | 通用图片描述 |
+| `custom` | 按 `prompt` 自定义分析（如「这件外套够不够保暖」「这身搭配协调吗」） |
+
+### 三种用法
+
+1. **聊天里附图**：网页版输入框左侧点「📎」选图片 → 图片会上传到工作区 `uploads/` → 管家自动用 `analyze_image` 识别（因可直接读工作区图片，不需要联网传输 base64）
+2. **衣柜录入时识别**：衣柜弹窗点「🔍 识别图片参数」→ 识别结果自动填入表单 → 核对后保存
+3. **工具直调**：`analyze_image` 的 `image` 参数可传
+   - 工作区相对路径（如 `uploads/u_xxx.png`）或绝对路径
+   - 衣柜图片（如 `images/<文件名>.png`）
+   - `http(s)` 图片链接
+
+### 模型要求（重要）
+
+识别必须用**多模态**模型。配置项 `visionModel` 指定识别模型，留空则沿用主模型 `model`：
+
+| 场景 | 建议 |
+| --- | --- |
+| 主模型本身支持图片（如 `deepseek-chat`、`gpt-4o-mini`、`qwen-vl-max`） | `visionModel` 留空即可 |
+| 主模型不支持图片（如 `deepseek-v4-pro`、`moonshot-v1-8k`） | 把 `visionModel` 设为某个多模态模型 |
+
+```jsonc
+{
+  "model": "deepseek-chat",
+  "visionModel": ""   // 留空=沿用 model；可填 deepseek-flash / gpt-4o-mini / qwen-vl-max 等
+}
+```
+
+> 模型若不支持图片输入，通常会在识别环节报错或返回空；此时请切换到多模态模型。
+
+### 后端接口
+
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| `POST` | `/api/upload` | 上传图片（`{image: "data:image/..."}`）→ 存 `uploads/` 返回路径 |
+| `GET` | `/api/upload/:file` | 读回上传的图片 |
+| `POST` | `/api/analyze-image` | 识别图片（`{image, mode?, prompt?, model?}`），返回 `{text, parsed}` |
 
 ---
 
@@ -328,6 +380,7 @@ CloudOrder/
 │   ├── style-resort/       度假 / 旅行
 │   ├── weather-dressing/   结合天气的穿搭
 │   ├── wardrobe-matching/  基于「衣柜」真实单品的搭配
+│   ├── wardrobe-vision/    识别衣物图片，转成衣柜字段
 │   ├── summarize-file/
 │   └── commit-message/
 ├── public/index.html       Web 界面
@@ -341,7 +394,7 @@ CloudOrder/
 │   ├── session.js          会话持久化
 │   ├── utils.js            公共工具
 │   ├── wardrobe.js         衣柜数据库（本地 JSON + 图片）
-│   ├── tools/              内置工具（含 weather.js 天气、location.js IP 定位、wardrobe.js 衣柜）
+│   ├── tools/              内置工具（含 weather.js 天气、location.js IP 定位、wardrobe.js 衣柜、vision.js 图片识别）
 │   ├── plugins/loader.js   插件加载器
 │   └── ui/                 CLI 与 Web 界面
 └── test/                   测试与 mock 模型服务

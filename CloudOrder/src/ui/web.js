@@ -5,10 +5,11 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { PUBLIC_DIR, WARDROBE_IMAGE_DIR } from '../config.js';
+import { PUBLIC_DIR, WARDROBE_IMAGE_DIR, UPLOAD_DIR } from '../config.js';
 import { Agent } from '../agent.js';
 import { color } from '../utils.js';
 import { locateBrief } from '../tools/location.js';
+import { identifyImage } from '../tools/vision.js';
 import * as wardrobe from '../wardrobe.js';
 
 export async function startWebServer({ config, registry }) {
@@ -72,14 +73,50 @@ export async function startWebServer({ config, registry }) {
         baseUrl: config.baseUrl,
         workspace: config.workspace,
         autoApprove: config.autoApprove,
+        visionModel: config.visionModel || config.model,
         tools: [...registry.tools.values()].map((t) => ({ name: t.name, description: t.description, risk: t.risk, plugin: t.plugin })),
         skills: [...registry.skills.values()].map((s) => ({ name: s.name, description: s.description })),
         plugins: registry.plugins.map((p) => ({ name: p.name, description: p.description, tools: p.tools }))
       });
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/location-weather') {
+    // ---- 通用图片上传（供聊天中附加图片、供 analyze_image 读取）----
+    if (url.pathname === '/api/upload' || url.pathname.startsWith('/api/upload/')) {
+      return handleUpload(req, res, url);
+    }
+
+    // ---- 图片识别（识别衣物参数，供衣柜录入前参考）----
+    if (req.method === 'POST' && url.pathname === '/api/analyze-image') {
+      let payload;
       try {
+        payload = JSON.parse((await readBody(req)) || '{}');
+      } catch {
+        return json(res, { error: 'body 必须是 JSON' }, 400);
+      }
+      let imageRef = String(payload.image || payload.path || '').trim();
+      // 允许直接传 dataURL：先落盘再识别
+      if (/^data:image\//i.test(imageRef)) {
+        try {
+          imageRef = saveUpload(imageRef);
+        } catch (err) {
+          return json(res, { error: err.message }, 400);
+        }
+      }
+      if (!imageRef) return json(res, { error: '缺少 image 字段' }, 400);
+      try {
+        const r = await identifyImage(config, {
+          image: imageRef,
+          mode: payload.mode || 'clothing',
+          prompt: payload.prompt,
+          model: payload.model
+        });
+        return json(res, { ok: true, mode: r.mode, model: r.model, text: r.text, parsed: r.parsed, storedImage: imageRef });
+      } catch (err) {
+        return json(res, { error: err.message }, 502);
+      }
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/location-weather') {      try {
         const data = await locateBrief({ timeoutMs: Math.min(config.requestTimeoutMs || 15000, 20000) });
         return json(res, data);
       } catch (err) {
@@ -100,8 +137,13 @@ export async function startWebServer({ config, registry }) {
       } catch {
         return json(res, { error: 'body 必须是 JSON' }, 400);
       }
-      const text = String(payload.text || '').trim();
-      if (!text) return json(res, { error: 'text 不能为空' }, 400);
+      let text = String(payload.text || '').trim();
+      const attachments = Array.isArray(payload.images) ? payload.images.map((s) => String(s || '').trim()).filter(Boolean) : [];
+      if (!text && !attachments.length) return json(res, { error: 'text 不能为空' }, 400);
+      if (attachments.length) {
+        const refs = attachments.slice(0, 4).map((p) => `- 图片路径：${p}`).join('\n');
+        text = `${text ? text + '\n\n' : ''}[用户上传了 ${attachments.length} 张图片，已保存到工作区，请用 analyze_image 工具识别；上传图片时也可用 mode=clothing 得到可录入衣柜的字段]\n${refs}`;
+      }
 
       res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -276,6 +318,61 @@ async function handleWardrobe(req, res, url) {
   } catch (err) {
     return json(res, { error: err.message }, 400);
   }
+}
+
+/** 通用图片上传：POST /api/upload（dataURL）→ 存盘 + 返回相对路径；GET /api/upload/:file 读回 */
+async function handleUpload(req, res, url) {
+  const parts = url.pathname.split('/').filter(Boolean); // ['api','upload', ...]
+  const sub = parts[2];
+
+  if (sub) {
+    if (req.method !== 'GET') return json(res, { error: 'method not allowed' }, 405);
+    const file = path.basename(parts.slice(2).join('/') || '');
+    const abs = path.join(UPLOAD_DIR, file);
+    if (!file || !abs.startsWith(UPLOAD_DIR)) return json(res, { error: 'forbidden' }, 403);
+    const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+    return serveFile(abs, res, types);
+  }
+
+  if (req.method !== 'POST') return json(res, { error: 'method not allowed' }, 405);
+  let body;
+  try {
+    body = await readBody(req);
+  } catch (err) {
+    return json(res, { error: err.message }, 413);
+  }
+  let payload;
+  try {
+    payload = JSON.parse(body || '{}');
+  } catch {
+    return json(res, { error: 'body 必须是 JSON' }, 400);
+  }
+  const dataUrl = String(payload.image || payload.dataUrl || '');
+  if (!/^data:image\//i.test(dataUrl)) return json(res, { error: 'image 必须是 data:image/... 的 dataURL' }, 400);
+  try {
+    const ref = saveUpload(dataUrl);
+    const name = path.basename(ref);
+    return json(res, { ok: true, path: ref, url: `/api/upload/${name}`, name }, 201);
+  } catch (err) {
+    return json(res, { error: err.message }, 400);
+  }
+}
+
+/** 保存 dataURL 图片到 .cloudorder/uploads，返回相对引用 uploads/<file> */
+function saveUpload(dataUrl) {
+  const m = /^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/s.exec(String(dataUrl || ''));
+  if (!m) throw new Error('图片格式无效：需要 data:image/...;base64,... 形式');
+  const mime = m[1].toLowerCase();
+  const extByMime = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+  const ext = extByMime[mime];
+  if (!ext) throw new Error(`不支持的图片类型：${mime}（仅支持 png/jpeg/webp/gif）`);
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length) throw new Error('图片内容为空');
+  if (buf.length > 8 * 1024 * 1024) throw new Error('图片过大（上限 8MB）');
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  const file = `u_${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}.${ext}`;
+  fs.writeFileSync(path.join(UPLOAD_DIR, file), buf);
+  return `uploads/${file}`;
 }
 
 function readBody(req) {

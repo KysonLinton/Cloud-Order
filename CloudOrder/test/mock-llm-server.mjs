@@ -48,10 +48,36 @@ function sseToolCall(res, name, args, id = 'call_1') {
 function handle(body) {
   const messages = body.messages || [];
   const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-  const text = lastUser?.content || '';
+  const rawContent = lastUser?.content;
+  const isVision = Array.isArray(rawContent);
+  const text = isVision
+    ? (rawContent.find((c) => c.type === 'text')?.text || '')
+    : rawContent || '';
   const toolResults = messages.filter((m) => m.role === 'tool');
   const toolNames = (body.tools || []).map((t) => t.function.name);
   const hasLoadSkill = toolResults.some((m) => m.name === 'load_skill');
+
+  // 图片识别请求：返回一段可解析的衣物 JSON
+  if (isVision) {
+    return {
+      kind: 'text',
+      text:
+        '{\n' +
+        '  "name": "米白色针织开衫",\n' +
+        '  "category": "针织/毛衣",\n' +
+        '  "colors": ["米白"],\n' +
+        '  "material": "羊毛混纺",\n' +
+        '  "style": ["简约", "通勤"],\n' +
+        '  "seasons": ["春", "秋"],\n' +
+        '  "fit": "宽松",\n' +
+        '  "brand": "",\n' +
+        '  "tags": ["开衫", "纽扣"],\n' +
+        '  "notes": "（Mock 模型识别结果）",\n' +
+        '  "confidence": 0.82,\n' +
+        '  "unsure": ["brand"]\n' +
+        '}'
+    };
+  }
 
   // 第二轮：工具已经执行完，给出总结
   if (toolResults.length) {
