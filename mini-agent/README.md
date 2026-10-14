@@ -205,6 +205,16 @@ mini-agent/
 │   ├── utility.mjs         示例：时间/计算/Base64
 │   └── git.mjs             示例：Git 状态/日志/差异
 ├── skills/                 技能（SKILL.md，流程级接口）
+│   ├── outfit-advice/      穿搭建议总入口（含风格索引）
+│   ├── style-casual/       休闲风格
+│   ├── style-business/     商务 / 通勤
+│   ├── style-banquet/      宴会 / 正式
+│   ├── style-sport/        运动 / 户外
+│   ├── style-street/       街头潮流
+│   ├── style-minimal/      极简
+│   ├── style-vintage/      复古 / 学院
+│   ├── style-date/         约会 / 社交
+│   ├── style-resort/       度假 / 旅行
 │   ├── summarize-file/
 │   └── commit-message/
 ├── public/index.html       Web 界面
