@@ -134,11 +134,12 @@ try {
   check('清空全部', delAll.ok && da.summary.total === 0);
   check('清空后文件不存在', !fs.existsSync(FEEDBACK_FILE));
 
-  console.log('\n[9] 系统提示注入（真实 config）');
-  const { loadConfig } = await import('../src/config.js');
-  const cfg = loadConfig({ overrides: { apiKey: 'test' } });
-  check('系统提示含 feedback_add 条款', /feedback_add/.test(cfg.systemPrompt || ''));
-  check('系统提示含「不要重复」约束', /不要重复/.test(cfg.systemPrompt || ''));
+  console.log('\n[9] 系统提示注入（仓库内置默认提示）');
+  const { DEFAULTS } = await import('../src/config.js');
+  check('内置默认提示含 feedback_add 条款', /feedback_add/.test(DEFAULTS.systemPrompt || ''));
+  check('内置默认提示含「不要重复」约束', /不要重复/.test(DEFAULTS.systemPrompt || ''));
+  check('内置默认提示含档案条款（profile_get）', /profile_get/.test(DEFAULTS.systemPrompt || ''));
+  check('8 条系统规则', (DEFAULTS.systemPrompt.match(/\d\)\s/g) || []).length === 8, String((DEFAULTS.systemPrompt.match(/\d\)\s/g) || []).length));
 } catch (err) {
   fail++;
   console.log(`  ✗ 测试异常: ${err.message}`);
