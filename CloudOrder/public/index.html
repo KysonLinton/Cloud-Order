@@ -1,1166 +1,1416 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>穿搭管家 · CloudOrder</title>
-    <style>
-      :root {
-        --bg: #0f1116;
-        --panel: #171a21;
-        --panel-2: #1f232c;
-        --line: #2a2f3a;
-        --text: #e6e8ee;
-        --dim: #8b93a5;
-        --accent: #7c8cff;
-        --green: #4ade80;
-        --red: #f87171;
-        --yellow: #fbbf24;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.6 ui-sans-serif, system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-      header {
-        padding: 10px 18px;
-        border-bottom: 1px solid var(--line);
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        background: var(--panel);
-        flex-wrap: wrap;
-      }
-      header .brand { font-weight: 700; color: var(--accent); letter-spacing: .3px; }
-      header .meta { color: var(--dim); font-size: 12px; }
-      header .spacer { flex: 1; }
-      button {
-        background: var(--panel-2);
-        color: var(--text);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 5px 12px;
-        cursor: pointer;
-        font-size: 12px;
-      }
-      button:hover { border-color: var(--accent); }
-      button:disabled { opacity: .45; cursor: not-allowed; }
-      main { flex: 1; overflow-y: auto; padding: 22px 0; }
-      .wrap { max-width: 860px; margin: 0 auto; padding: 0 18px; }
-      .msg { margin-bottom: 20px; }
-      .msg .who { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
-      .bubble {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px 15px;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-      .msg.user .bubble { background: #1d2333; border-color: #2c3550; }
-      .bubble pre {
-        background: #0b0d12;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 10px;
-        overflow-x: auto;
-        margin: 8px 0;
-      }
-      .bubble code { background: #0b0d12; padding: 2px 5px; border-radius: 4px; font-size: 12.5px; }
-      .tool {
-        font-size: 12.5px;
-        border-left: 2px solid var(--accent);
-        padding: 6px 0 6px 12px;
-        margin: 8px 0;
-        color: var(--dim);
-      }
-      .tool .name { color: var(--accent); font-weight: 600; }
-      .tool .out { white-space: pre-wrap; max-height: 220px; overflow-y: auto; margin-top: 4px; color: #9aa3b5; }
-      .tool.err { border-left-color: var(--red); }
-      .notice { font-size: 12.5px; color: var(--yellow); margin: 6px 0; }
-      .approval {
-        border: 1px solid var(--yellow);
-        border-radius: 10px;
-        padding: 12px;
-        margin: 10px 0;
-        background: #221d10;
-      }
-      .approval h4 { margin: 0 0 8px; color: var(--yellow); font-size: 13px; }
-      .approval pre { background: #14120c; border-radius: 6px; padding: 8px; overflow-x: auto; font-size: 12px; margin: 6px 0; }
-      footer { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 18px; }
-      .composer { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
-      textarea {
-        flex: 1;
-        resize: none;
-        background: var(--panel-2);
-        color: var(--text);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px 12px;
-        font: inherit;
-        height: 54px;
-        max-height: 180px;
-      }
-      textarea:focus { outline: none; border-color: var(--accent); }
-      .hint { color: var(--dim); font-size: 11.5px; max-width: 860px; margin: 6px auto 0; }
-      .icon-btn { height: 54px; width: 46px; padding: 0; font-size: 18px; line-height: 1; flex: none; }
-      .atts { max-width: 860px; margin: 0 auto 8px; display: flex; gap: 8px; flex-wrap: wrap; }
-      .atts .att { position: relative; width: 54px; height: 54px; border-radius: 8px; border: 1px solid var(--line); background-size: cover; background-position: center; }
-      .atts .att button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0; border-radius: 50%; font-size: 11px; line-height: 1; border-color: var(--red); color: var(--red); background: var(--panel); }
-      .bubble .msg-imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-      .bubble .msg-imgs img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
-      .cursor::after { content: '▍'; color: var(--accent); animation: blink 1s step-end infinite; }
-      @keyframes blink { 50% { opacity: 0; } }
-      .panel {
-        position: fixed; right: 16px; top: 58px; width: 380px; max-height: 74vh; overflow-y: auto;
-        background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
-        box-shadow: 0 18px 50px rgba(0,0,0,.5); display: none; z-index: 20;
-      }
-      .panel.open { display: block; }
-      .panel h3 { margin: 14px 0 6px; font-size: 13px; color: var(--accent); }
-      .panel h3:first-child { margin-top: 0; }
-      .panel .item { font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-      .panel .item .d { color: var(--dim); }
-      .badge { font-size: 10.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--dim); }
-      /* 位置 / 天气模块 */
-      .env-card {
-        display: flex; align-items: center; gap: 12px;
-        background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-        padding: 5px 12px; cursor: pointer; user-select: none; transition: border-color .15s;
-      }
-      .env-card:hover { border-color: var(--accent); }
-      .env-card .temp { font-size: 19px; font-weight: 700; line-height: 1; }
-      .env-card .wx { display: flex; flex-direction: column; line-height: 1.25; }
-      .env-card .cond { font-size: 12.5px; }
-      .env-card .loc { font-size: 11px; color: var(--dim); }
-      .env-card .ico { font-size: 22px; }
-      .env-card .spin { color: var(--dim); font-size: 12px; }
-      .env-card .extra { font-size: 11px; color: var(--dim); border-left: 1px solid var(--line); padding-left: 12px; display: flex; flex-direction: column; line-height: 1.35; }
-      .env-card.err { border-color: var(--red); color: var(--dim); }
-      @media (max-width: 720px) { .env-card .extra { display: none; } }
-      /* 衣柜 */
-      .panel.wide { width: 460px; }
-      .panel .row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
-      .panel .row input, .panel .row select { flex: 1; min-width: 0; }
-      .panel input, .panel select, .panel textarea {
-        background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-        border-radius: 7px; padding: 6px 9px; font: inherit; font-size: 12.5px;
-      }
-      .panel input:focus, .panel select:focus, .panel textarea:focus { outline: none; border-color: var(--accent); }
-      .wd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .wd-card {
-        border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-        background: var(--panel-2); display: flex; flex-direction: column;
-      }
-      .wd-card .thumb {
-        height: 108px; background: #0b0d12 center/cover no-repeat; display: flex;
-        align-items: center; justify-content: center; color: #3a4150; font-size: 26px;
-      }
-      .wd-card .body { padding: 8px 9px; display: flex; flex-direction: column; gap: 4px; }
-      .wd-card .nm { font-weight: 600; font-size: 13px; word-break: break-all; }
-      .wd-card .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-      .wd-card .tags .badge { font-size: 10px; }
-      .wd-card .acts { display: flex; gap: 6px; margin-top: 4px; }
-      .wd-card .acts button { flex: 1; padding: 3px 0; font-size: 11.5px; }
-      .wd-empty { color: var(--dim); font-size: 12.5px; text-align: center; padding: 28px 12px; line-height: 1.9; }
-      .modal-mask {
-        position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none;
-        align-items: center; justify-content: center; z-index: 40; padding: 20px;
-      }
-      .modal-mask.open { display: flex; }
-      .modal {
-        width: 520px; max-width: 100%; max-height: 88vh; overflow-y: auto;
-        background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px;
-        box-shadow: 0 24px 70px rgba(0,0,0,.6);
-      }
-      .modal h3 { margin: 0 0 14px; font-size: 15px; color: var(--accent); }
-      .field { margin-bottom: 11px; }
-      .field label { display: block; font-size: 11.5px; color: var(--dim); margin-bottom: 4px; }
-      .field input, .field select, .field textarea {
-        width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-        border-radius: 7px; padding: 7px 10px; font: inherit; font-size: 13px;
-      }
-      .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
-      .field textarea { resize: vertical; min-height: 54px; }
-      .field .hintline { color: var(--dim); font-size: 11px; margin-top: 3px; }
-      .img-prev {
-        width: 96px; height: 96px; border-radius: 10px; border: 1px dashed var(--line);
-        background: #0b0d12 center/cover no-repeat; display: flex; align-items: center;
-        justify-content: center; color: #3a4150; font-size: 22px; cursor: pointer; flex: 0 0 auto;
-      }
-      .modal .bar { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
-      .modal .bar.sticky { position: sticky; bottom: 0; background: var(--panel); padding-top: 12px; border-top: 1px solid var(--line); }
-      .modal .bar .save { border-color: var(--green); color: var(--green); }
-      .modal .bar .del { border-color: var(--red); color: var(--red); margin-right: auto; }
-      /* 用户档案 */
-      .panel.wider { width: 560px; }
-      .pf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-      .pf-cols .field.full { grid-column: 1 / -1; }
-      .pf-note { color: var(--dim); font-size: 11.5px; margin: 0 0 14px; line-height: 1.8; }
-      #btn-profile { position: relative; }
-      #btn-profile .dot { position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); }
-      .pf-empty { color: var(--dim); font-size: 12.5px; text-align: center; padding: 22px 12px; line-height: 1.9; }
-      /* 用户反馈（评价飞轮） */
-      .modal.wider { width: 720px; }
-      .fb-stat { font-size: 12.5px; color: var(--dim); margin: 0 0 14px; line-height: 1.7; }
-      .fb-stat b { color: var(--text); }
-      .fb-chips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
-      .fb-empty { color: var(--dim); font-size: 12.5px; padding: 12px 0; line-height: 1.8; }
-      .fb-h { font-size: 12.5px; color: var(--accent); margin: 16px 0 8px; }
-      .fb-list {
-        margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px;
-        display: flex; flex-direction: column; gap: 8px; max-height: 30vh; overflow-y: auto;
-      }
-      .modal .bar.sticky { margin-top: 12px; }
-      .fb-item { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--panel-2); font-size: 12.5px; }
-      .fb-top { display: flex; align-items: center; gap: 8px; }
-      .fb-date { color: var(--dim); font-size: 11px; margin-left: auto; }
-      .fb-del { background: none; border: none; color: var(--dim); font-size: 15px; cursor: pointer; padding: 0 2px; line-height: 1; }
-      .fb-del:hover { color: var(--red); }
-      .fb-txt { margin-top: 4px; line-height: 1.6; word-break: break-word; }
-      .fb-tags { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
-      .fb-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 9px; font-size: 11.5px; color: var(--dim); }
-      .fb-inline button { font-size: 11.5px; padding: 3px 9px; }
-      .fb-inline .done { color: var(--green); }
-      #btn-feedback { position: relative; }
-      @media (max-width: 760px) {
-        .modal.wider { width: 100%; }
-        .pf-cols { grid-template-columns: 1fr; }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <span class="brand">穿搭管家</span>
-      <span class="meta" id="meta">加载中…</span>
-      <div class="env-card" id="env-card" title="点击刷新位置与天气"><span class="spin">定位中…</span></div>
-      <span class="spacer"></span>
-      <button id="btn-profile">档案</button>
-      <button id="btn-feedback">反馈</button>
-      <button id="btn-wardrobe">衣柜</button>
-      <button id="btn-panel">工具/技能</button>
-      <button id="btn-reset">新会话</button>
-      <button id="btn-stop" disabled>停止</button>
-    </header>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#f6f3ed" />
+<title>智衣橱 · 穿搭管家</title>
+<style>
+  :root{
+    --bg:#f6f3ed; --bg2:#efeae1; --card:#ffffff; --ink:#1f2328; --ink2:#4b5563; --dim:#8b8f96;
+    --line:#e8e2d8; --accent:#55708f; --accent2:#6d87a8; --accent-ink:#3f5876;
+    --chip:#e7edf5; --chip-ink:#4c6a91; --sage:#e9efe3; --sage-ink:#5c7350; --sky:#e9eff5;
+    --warn:#b4562f; --ok:#4f7a4a; --danger:#b4433a;
+    --r:18px; --r2:14px; --shadow:0 1px 2px rgba(31,35,40,.05),0 8px 24px rgba(31,35,40,.06);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+    font-size:15px; line-height:1.55;
+  }
+  button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+  code{background:#ece7de;padding:1px 5px;border-radius:6px;font-size:.88em}
 
-    <main id="main"><div class="wrap" id="log"></div></main>
+  /* ---------- 手机外壳 ---------- */
+  .app{position:relative;height:100%;width:100%;max-width:520px;margin:0 auto;background:var(--bg);
+       display:flex;flex-direction:column;overflow:hidden}
+  @media(min-width:560px){ .app{box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(31,35,40,.10)} }
 
-    <div class="panel" id="panel"></div>
-    <div class="panel wide" id="wardrobe"></div>
-    <div class="modal-mask" id="wd-modal"></div>
-    <div class="modal-mask" id="pf-modal"></div>
-    <div class="modal-mask" id="fb-modal"></div>
+  /* ---------- 顶栏 ---------- */
+  .appbar{flex:0 0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 10px;
+          display:flex;align-items:flex-start;gap:12px;background:var(--bg)}
+  .appbar .titles{flex:1;min-width:0}
+  .appbar h1{margin:0;font-size:25px;font-weight:800;letter-spacing:-.02em}
+  .appbar .sub{margin:1px 0 0;font-size:12.5px;color:var(--dim)}
+  .iconbtn{flex:0 0 auto;width:40px;height:40px;border-radius:14px;background:var(--card);
+           display:grid;place-items:center;box-shadow:var(--shadow);position:relative;font-size:18px}
+  .iconbtn .dot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;
+                background:var(--warn);box-shadow:0 0 0 2px var(--card)}
+  .iconbtn.back{background:transparent;box-shadow:none;font-size:22px;width:36px}
 
-    <footer>
-      <div class="atts" id="chat-atts"></div>
-      <div class="composer">
-        <button id="btn-attach" class="icon-btn" title="附加图片（识别衣物参数）">📎</button>
-        <input type="file" id="chat-file" accept="image/*" multiple style="display:none" />
-        <textarea id="input" placeholder="输入消息…（Enter 发送，Shift+Enter 换行；可点 📎 附衣服图片让管家识别）"></textarea>
-        <button id="btn-send" style="height: 40px; padding: 0 20px">发送</button>
+  /* ---------- 视图 ---------- */
+  .views{flex:1;min-height:0;position:relative}
+  .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+        padding:0 18px 26px;display:none;width:100%}
+  .view.active{display:block}
+  .view.pad-chat{padding:0 0 0}
+
+  /* ---------- 卡片 ---------- */
+  .card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);margin:0 0 14px}
+  .card.flat{box-shadow:none;border:1px solid var(--line)}
+  .card.sky{background:linear-gradient(135deg,#e9eff5,#dfe8f1)}
+  .card.sage{background:var(--sage)}
+  .row{display:flex;align-items:center;gap:10px}
+  .row.between{justify-content:space-between}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--dim)}
+  .sec-title{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 12px}
+  .sec-title h2{margin:0;font-size:19px;font-weight:750;letter-spacing:-.01em}
+  .sec-title .more{font-size:13px;color:var(--accent);font-weight:600}
+  .ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---------- 按钮 ---------- */
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+       padding:15px 18px;border-radius:16px;font-size:16px;font-weight:700;
+       background:var(--accent);color:#fff;box-shadow:0 8px 20px rgba(85,112,143,.22)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:#eef1f5;color:var(--accent-ink);box-shadow:none}
+  .btn.line{background:transparent;border:1.5px solid var(--line);color:var(--ink2);box-shadow:none}
+  .btn.sm{padding:10px 14px;font-size:14px;border-radius:12px;width:auto}
+  .btn[disabled]{opacity:.5}
+
+  /* ---------- 胶囊标签 ---------- */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;
+        background:var(--chip);color:var(--chip-ink);font-size:13px;font-weight:600;
+        border:1px solid transparent;white-space:nowrap}
+  .chip.on{background:var(--accent);color:#fff}
+  .chip.gray{background:#f0ece5;color:var(--ink2)}
+  .chip.sage{background:var(--sage);color:var(--sage-ink)}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;
+         font-size:12.5px;font-weight:700;background:var(--sage);color:var(--sage-ink)}
+  .badge.blue{background:var(--chip);color:var(--chip-ink)}
+  .badge.gray{background:#f0ece5;color:var(--ink2)}
+  .scrollx{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+  .scrollx::-webkit-scrollbar{display:none}
+
+  /* ---------- 首页 ---------- */
+  .greet{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:10px 2px 2px}
+  .greet-sub{font-size:13px;color:var(--dim);margin:0 2px 14px}
+  .wx-top{display:flex;align-items:flex-start;gap:14px}
+  .wx-temp{font-size:46px;font-weight:800;line-height:1;letter-spacing:-.03em}
+  .wx-temp small{font-size:20px;font-weight:700;vertical-align:top}
+  .wx-icon{font-size:40px;line-height:1;margin-left:auto}
+  .wx-line{font-size:13.5px;color:var(--accent-ink);margin-top:6px}
+  .wx-foot{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--accent-ink)}
+  .wx-loc{margin-left:auto;font-size:12.5px;color:var(--accent-ink);display:flex;align-items:center;gap:4px}
+
+  /* 搭配卡 */
+  .outfit-card{padding:16px 16px 14px}
+  .outfit-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .outfit-head h3{margin:0;font-size:18px;font-weight:750;flex:1}
+  .collage{position:relative;width:100%;aspect-ratio:4/3;border-radius:14px;overflow:hidden;
+           background:linear-gradient(150deg,#efeae2,#e4ded3);
+           display:grid;place-items:center;margin-bottom:12px;border:1px solid var(--line)}
+  .collage.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;background:#efeae2}
+  .collage img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+  .collage .ph{display:grid;place-items:center;gap:4px;font-size:26px;color:#b3aa9c}
+  .collage .ph span{font-size:12px;color:#a79e90}
+  .outfit-note{font-size:13px;color:var(--ink2);margin:10px 2px 0}
+
+  /* ---------- 衣橱 ---------- */
+  .search{display:flex;align-items:center;gap:9px;background:#efeae1;border-radius:14px;padding:12px 14px;margin:8px 0 14px}
+  .search input{flex:1;border:0;background:none;outline:none;font-size:15px}
+  .search .ic{color:var(--dim);font-size:16px}
+  .wg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .wi{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer}
+  .wi .thumb{position:relative;width:100%;aspect-ratio:3/4;background:#efeae1;display:grid;place-items:center;font-size:24px;color:#b3aa9c}
+  .wi .thumb img{width:100%;height:100%;object-fit:cover}
+  .wi .thumb .cat{position:absolute;left:6px;top:6px;padding:2px 7px;border-radius:999px;
+                  background:rgba(255,255,255,.86);font-size:10.5px;font-weight:700;color:var(--accent-ink)}
+  .wi .meta{padding:8px 9px 10px}
+  .wi .nm{font-size:13.5px;font-weight:700;line-height:1.32;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .wi .sub{font-size:11.5px;color:var(--dim);margin-top:2px}
+  .sticky-foot{position:sticky;bottom:0;padding:12px 0 calc(10px + var(--safe-b));background:linear-gradient(180deg,rgba(246,243,237,0),var(--bg) 34%)}
+  .empty{padding:44px 20px;text-align:center;color:var(--dim)}
+  .empty .big{font-size:40px;margin-bottom:8px}
+
+  /* ---------- 我的 ---------- */
+  .me-head{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
+  .avatar{width:62px;height:62px;border-radius:22px;background:var(--chip);color:var(--accent-ink);
+          display:grid;place-items:center;font-size:24px;font-weight:800;flex:0 0 auto}
+  .me-head .nm{font-size:21px;font-weight:800;margin:0}
+  .me-head .bio{font-size:13px;color:var(--dim);margin:2px 0 0}
+  .stats{display:flex;text-align:center}
+  .stat{flex:1;padding:6px 0}
+  .stat b{display:block;font-size:21px;font-weight:800;color:var(--accent-ink)}
+  .stat span{font-size:12px;color:var(--dim)}
+  .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+  .kv .cell{background:#f4f0e9;border-radius:12px;padding:11px 12px}
+  .kv .cell i{display:block;font-style:normal;font-size:12px;color:var(--dim);margin-bottom:2px}
+  .kv .cell b{font-size:15.5px;font-weight:750}
+  .swatches{display:flex;gap:9px;margin-top:12px;align-items:center}
+  .sw{width:26px;height:26px;border-radius:9px;border:2px solid rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+
+  /* ---------- 聊天 ---------- */
+  .chat{display:flex;flex-direction:column;height:100%}
+  .chat-head{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 18px 12px}
+  .chat-head .t{flex:1;min-width:0}
+  .chat-head h1{margin:0;font-size:20px;font-weight:800}
+  .chat-head .sub{font-size:12px;color:var(--dim)}
+  .chat-log{flex:1;min-height:0;overflow-y:auto;padding:4px 16px 14px;display:flex;flex-direction:column;gap:12px}
+  .msgsys{display:flex;flex-wrap:wrap;gap:8px;background:var(--chip);border-radius:14px;padding:12px 14px;color:var(--accent-ink);font-size:12.5px}
+  .msgsys b{font-size:12.5px;display:block;width:100%;margin-bottom:2px}
+  .m{display:flex;gap:9px;max-width:100%}
+  .m .av{flex:0 0 auto;width:30px;height:30px;border-radius:11px;display:grid;place-items:center;background:var(--chip);color:var(--accent-ink);font-size:15px}
+  .m.user{justify-content:flex-end}
+  .m.user .bubble{background:var(--accent);color:#fff;border-radius:16px 16px 4px 16px}
+  .m.bot .bubble{background:var(--card);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow)}
+  .bubble{padding:12px 14px;font-size:14.5px;max-width:82%;word-break:break-word;white-space:pre-wrap}
+  .bubble .step{font-size:12px;color:var(--dim);margin-top:6px}
+  .bubble .tool{font-size:12px;color:var(--accent-ink);background:var(--chip);border-radius:9px;padding:5px 9px;margin-top:6px;display:inline-block}
+  .noteline{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--sage-ink);padding:2px 6px}
+  .plan-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-top:2px;max-width:88%}
+  .plan-card h4{margin:0 0 8px;font-size:16.5px;font-weight:800}
+  .plan-card .lines{font-size:13.5px;color:var(--ink2);line-height:1.7}
+  .plan-card .view-all{margin-top:12px;background:var(--chip);color:var(--chip-ink);border-radius:12px;padding:11px;text-align:center;font-weight:700;font-size:14px}
+  .quickrow{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 8px;scrollbar-width:none}
+  .quickrow::-webkit-scrollbar{display:none}
+  .composer{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:8px 16px calc(8px + var(--safe-b))}
+  .composer .box{flex:1;display:flex;align-items:center;gap:8px;background:#efeae1;border-radius:16px;padding:11px 14px}
+  .composer textarea{flex:1;border:0;background:none;outline:none;resize:none;max-height:96px;font-size:15px;line-height:1.45}
+  .composer .send{width:44px;height:44px;border-radius:14px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:18px;flex:0 0 auto}
+  .composer .mic{color:var(--dim);font-size:17px}
+  .fb-inline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f4f1ea;border:1px dashed var(--line);
+             border-radius:14px;padding:10px 12px;font-size:12.5px;color:var(--ink2);max-width:92%}
+  .fb-inline b{font-weight:750;color:var(--ink)}
+
+  /* ---------- 子页 ---------- */
+  .subview{position:absolute;inset:0;background:var(--bg);z-index:40;overflow-y:auto;overflow-x:hidden;width:100%;
+           padding:calc(14px + env(safe-area-inset-top,0px)) 18px calc(24px + var(--safe-b));
+           transform:translateX(100%);transition:transform .26s cubic-bezier(.3,.7,.3,1);display:block}
+  .subview.open{transform:translateX(0)}
+  .subhead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .subhead h1{margin:0;flex:1;font-size:21px;font-weight:800}
+  .hrt-out{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px;text-align:center}
+  .hrt-out .h{padding:10px 0;border-radius:12px;background:#f4f1ea}
+  .hrt-out .h.on{background:var(--sky);box-shadow:inset 0 0 0 1.5px var(--accent2)}
+  .hrt-out .h .t{font-size:11.5px;color:var(--dim)}
+  .hrt-out .h .i{font-size:19px;margin:3px 0}
+  .hrt-out .h .d{font-size:13.5px;font-weight:750}
+  .map{position:relative;height:200px;border-radius:var(--r);overflow:hidden;margin-bottom:14px;
+       background:linear-gradient(140deg,#dbe6ef 0%,#e7eee4 55%,#eef0e6 100%);border:1px solid var(--line)}
+  .map .water{position:absolute;left:-6%;top:-18%;width:52%;height:150%;background:#cdddec;transform:rotate(12deg)}
+  .map .road{position:absolute;height:10px;background:#f7f5f0;box-shadow:0 0 0 1px #e3ded4}
+  .map .pin{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);text-align:center}
+  .map .pin .dot2{width:16px;height:16px;border-radius:50%;background:#eef3f8;border:5px solid #7d97b4;margin:0 auto;
+                  box-shadow:0 0 0 16px rgba(125,151,180,.13),0 0 0 34px rgba(125,151,180,.07)}
+  .map .here{position:absolute;left:50%;top:48%;transform:translate(-42%,26px);background:#fff;border-radius:999px;
+             padding:5px 12px;font-size:12px;font-weight:700;box-shadow:var(--shadow);white-space:nowrap}
+  .map .lbl{position:absolute;font-size:11.5px;color:#7e8a94}
+  .map .recenter{position:absolute;right:12px;bottom:12px;width:38px;height:38px;border-radius:12px;background:#fff;
+                 display:grid;place-items:center;box-shadow:var(--shadow)}
+  .plan-hero{position:relative;border-radius:var(--r);overflow:hidden;margin-bottom:14px;background:#efeae2;
+             border:1px solid var(--line);aspect-ratio:1/1;display:grid;place-items:center}
+  .plan-hero .ph{font-size:34px;color:#b3aa9c;display:grid;place-items:center;gap:6px}
+  .plan-hero .ph span{font-size:12.5px}
+  .spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+  .spec{display:flex;gap:8px;font-size:13.5px}
+  .spec .k{color:var(--dim);flex:0 0 34px}
+  .spec .v{font-weight:650;min-width:0}
+  .why{font-size:13.5px;color:var(--ink2);line-height:1.75}
+
+  /* ---------- 底部导航 ---------- */
+  .tabbar{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);background:#fbf9f5;
+          border-top:1px solid var(--line);padding:8px 6px calc(6px + var(--safe-b))}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:#a9a49b;font-size:11.5px;font-weight:650}
+  .tab .ic{font-size:21px;line-height:1}
+  .tab.on{color:var(--accent)}
+  .tab.on .ic{transform:translateY(-1px)}
+  .tab .home-ind{position:absolute}
+
+  /* ---------- 弹窗 ---------- */
+  .modal-mask{position:fixed;inset:0;background:rgba(31,35,40,.42);backdrop-filter:blur(2px);
+              display:none;align-items:center;justify-content:center;padding:16px;z-index:80}
+  .modal-mask.open{display:flex}
+  .modal{width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;
+         background:var(--card);border-radius:22px;box-shadow:0 24px 60px rgba(31,35,40,.28);overflow:hidden}
+  .modal > .mbody{padding:20px 20px 4px;overflow-y:auto;flex:1;min-height:0}
+  .modal h3{margin:0 0 6px;font-size:20px;font-weight:800}
+  .modal .note{font-size:12.5px;color:var(--dim);margin:0 0 14px;line-height:1.6}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;color:var(--ink2);font-weight:650;margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1.5px solid var(--line);
+       border-radius:13px;background:#fbfaf8;outline:none;font-size:14.5px}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent2);background:#fff}
+  .field textarea{min-height:76px;resize:vertical}
+  .grid2c{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bar{display:flex;gap:10px;padding:14px 20px calc(16px + var(--safe-b));border-top:1px solid var(--line);background:var(--card)}
+  .bar.sticky{position:sticky;bottom:0;box-shadow:0 -8px 20px rgba(31,35,40,.05)}
+  .bar button{flex:1;padding:13px;border-radius:14px;font-weight:750;font-size:15px;background:#f0ece5;color:var(--ink2)}
+  .bar button.save{background:var(--accent);color:#fff;flex:1.4}
+  .bar button.del{background:#fbeceb;color:var(--danger);flex:.8}
+  .fb-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+  .fb-rate button{padding:14px 8px;border-radius:15px;background:#f4f1ea;border:1.5px solid transparent;
+                  display:flex;flex-direction:column;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ink2)}
+  .fb-rate button .e{font-size:23px}
+  .fb-rate button.on{background:var(--chip);border-color:var(--accent2);color:var(--accent-ink)}
+  .fb-stat{display:flex;text-align:center;background:#f4f1ea;border-radius:14px;padding:12px 0;margin-bottom:14px}
+  .fb-stat .s{flex:1}
+  .fb-stat .s b{display:block;font-size:20px;font-weight:800;color:var(--accent-ink)}
+  .fb-stat .s span{font-size:11.5px;color:var(--dim)}
+  .fb-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .fb-item:last-child{border-bottom:0}
+  .fb-item .em{font-size:19px;flex:0 0 auto}
+  .fb-item .tx{flex:1;min-width:0}
+  .fb-item .tx b{font-weight:750}
+  .fb-item .tx p{margin:3px 0 0;color:var(--ink2);font-size:12.5px;line-height:1.55}
+  .fb-item .x{flex:0 0 auto;color:var(--dim);padding:2px 6px;align-self:flex-start}
+  .hint{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.6}
+  .img-prev{width:76px;height:76px;border-radius:14px;background:#efeae1 center/cover no-repeat;display:grid;place-items:center;font-size:22px;color:#b3aa9c;flex:0 0 auto;cursor:pointer}
+
+  /* ---------- Toast ---------- */
+  #toasts{position:fixed;left:0;right:0;bottom:calc(80px + var(--safe-b));display:flex;flex-direction:column;
+          align-items:center;gap:8px;z-index:120;pointer-events:none;padding:0 18px}
+  .toast{background:rgba(31,35,40,.92);color:#fff;padding:10px 16px;border-radius:14px;font-size:13.5px;
+         max-width:440px;box-shadow:0 10px 30px rgba(0,0,0,.24);animation:tin .22s ease}
+  @keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);
+        border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .skeleton{height:14px;border-radius:8px;background:linear-gradient(90deg,#ece7de,#f6f3ed,#ece7de);
+            background-size:200% 100%;animation:sk 1.2s linear infinite}
+  @keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="views">
+  <!-- ======================= 首页 ======================= -->
+  <section class="view active" id="view-home">
+    <div class="appbar" style="padding-left:0;padding-right:0">
+      <div class="titles">
+        <h1>智衣橱</h1>
+        <p class="sub">懂天气，更懂你的衣橱</p>
       </div>
-      <div class="hint" id="hint"></div>
-    </footer>
+      <button class="iconbtn" id="btn-bell" title="提醒">🔔</button>
+    </div>
 
-    <script>
-      const $ = (s) => document.querySelector(s);
-      const log = $('#log');
-      let busy = false;
-      let current = null;
-      let lastTool = null;
+    <div class="greet" id="home-greet">早上好</div>
+    <p class="greet-sub" id="home-sub">今天也从容出门</p>
 
-      fetch('/api/info').then((r) => r.json()).then((info) => {
-        window.__info = info;
-        $('#meta').textContent = `${info.model} · ${info.workspace}`;
-        $('#hint').textContent =
-          `${info.tools.length} 个工具 · ${info.skills.length} 个技能 · ${info.plugins.length} 个插件` +
-          (info.autoApprove ? ' · ⚠ 自动批准已开启' : '');
-        renderPanel(info);
-        loadProfile(!info.profileConfigured);
-        refreshFeedbackCount();
-      });
+    <!-- 天气卡 -->
+    <div class="card sky" id="home-wx" style="cursor:pointer">
+      <div class="wx-top">
+        <div>
+          <div class="wx-temp" id="wx-temp">--<small>°</small></div>
+          <div class="wx-line" id="wx-cond">正在获取天气…</div>
+        </div>
+        <div class="wx-icon" id="wx-icon">⛅</div>
+      </div>
+      <div class="wx-foot">
+        <span id="wx-hint">早晚微凉，建议薄外套叠穿</span>
+        <span class="wx-loc" id="wx-loc">📍 定位中… ›</span>
+      </div>
+    </div>
 
-      function renderPanel(info) {
-        const el = $('#panel');
-        const tool = (t) =>
-          `<div class="item"><b>${t.name}</b> <span class="badge">${t.risk || 'low'}</span>` +
-          `${t.plugin ? ` <span class="badge">${t.plugin}</span>` : ''}<div class="d">${esc(t.description.split('\n')[0])}</div></div>`;
-        el.innerHTML =
-          `<h3>工具 (${info.tools.length})</h3>${info.tools.map(tool).join('')}` +
-          `<h3>技能 (${info.skills.length})</h3>${
-            info.skills.map((s) => `<div class="item"><b>${s.name}</b><div class="d">${esc(s.description)}</div></div>`).join('') ||
-            '<div class="item d">未安装技能</div>'
-          }` +
-          `<h3>插件 (${info.plugins.length})</h3>${
-            info.plugins.map((p) => `<div class="item"><b>${p.name}</b><div class="d">${esc(p.description)}</div></div>`).join('') ||
-            '<div class="item d">未安装插件</div>'
-          }`;
-      }
+    <!-- 今日搭配 -->
+    <div class="sec-title">
+      <h2>今日为你搭配</h2>
+      <span class="more" id="home-view-plan">查看方案 ›</span>
+    </div>
+    <div class="card outfit-card" id="home-outfit">
+      <div class="skeleton" style="height:16px;width:60%"></div>
+      <div class="skeleton" style="height:170px;margin-top:12px;border-radius:14px"></div>
+    </div>
 
-      $('#btn-panel').onclick = () => $('#panel').classList.toggle('open');
+    <button class="btn" id="home-ask" style="margin-top:4px">✨ 告诉小智，今天想怎么穿</button>
+    <p class="muted" style="text-align:center;font-size:12px;margin:12px 0 0" id="home-foot">已结合你的衣柜与今日出行环境</p>
+  </section>
 
-      // ---- 位置 / 天气模块 ----
-      const wxIcon = (code, isDay) => {
-        const c = Number(code);
-        if (c === 0) return isDay === false ? '🌙' : '☀️';
-        if (c === 1 || c === 2) return isDay === false ? '🌤' : '🌤';
-        if (c === 3) return '☁️';
-        if (c === 45 || c === 48) return '🌫';
-        if (c >= 51 && c <= 67) return '🌦';
-        if (c >= 71 && c <= 77) return '🌨';
-        if (c >= 80 && c <= 82) return '🌧';
-        if (c >= 85 && c <= 86) return '🌨';
-        if (c >= 95) return '⛈';
-        return '🌡';
+  <!-- ======================= 衣橱 ======================= -->
+  <section class="view" id="view-wardrobe">
+    <div class="appbar" style="padding-left:0;padding-right:0">
+      <div class="titles">
+        <h1>我的衣橱</h1>
+        <p class="sub" id="wd-sub">每一件衣物，都有新的可能</p>
+      </div>
+      <button class="iconbtn" id="btn-wd-filter" title="筛选">⚙︎</button>
+    </div>
+
+    <div class="row between" style="margin:2px 2px 10px">
+      <span class="muted" style="font-size:13.5px" id="wd-count">共 0 件衣物</span>
+      <span class="badge" id="wd-sync">已同步</span>
+    </div>
+
+    <label class="search" for="wd-q">
+      <span class="ic">🔍</span>
+      <input id="wd-q" placeholder="搜索名称、颜色、材质" />
+    </label>
+
+    <div class="scrollx" id="wd-cats"></div>
+
+    <div class="sec-title" style="margin-top:14px">
+      <h2>单品</h2>
+      <span class="more" id="wd-sort">按最近添加 ›</span>
+    </div>
+    <div class="wg" id="wd-grid"></div>
+
+    <div class="sticky-foot">
+      <button class="btn" id="wd-add">📷 拍照添加新衣物</button>
+      <p class="muted" style="text-align:center;font-size:12px;margin:10px 0 0">自动识别品类与颜色，让已有衣物更好搭。</p>
+    </div>
+  </section>
+
+  <!-- ======================= 搭配助手 ======================= -->
+  <section class="view pad-chat" id="view-chat">
+    <div class="chat">
+      <div class="appbar" style="padding-bottom:6px">
+        <button class="iconbtn back" id="chat-back">‹</button>
+        <div class="titles">
+          <h1 style="font-size:21px">小智 · 搭配助手</h1>
+          <p class="sub">你的专属穿搭灵感</p>
+        </div>
+        <button class="iconbtn" id="btn-feedback" title="评价与反馈">💬</button>
+      </div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="quickrow" id="chat-quick"></div>
+      <div class="composer">
+        <div class="box">
+          <span class="mic">🎙</span>
+          <textarea id="chat-input" rows="1" placeholder="说说你的场合、心情或想法…"></textarea>
+        </div>
+        <button class="send" id="chat-send">↑</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 我的 ======================= -->
+  <section class="view" id="view-me">
+    <div class="appbar" style="padding-left:0;padding-right:0">
+      <div class="titles">
+        <h1>我的</h1>
+        <p class="sub">穿得自在，也穿得像自己</p>
+      </div>
+      <button class="iconbtn" id="btn-geo" title="地理信息">📍</button>
+    </div>
+
+    <div class="me-head">
+      <div class="avatar" id="me-avatar">林</div>
+      <div class="grow">
+        <p class="nm" id="me-name">还没填档案</p>
+        <p class="bio" id="me-bio">填一下档案，推荐会更懂你</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><b id="me-c1">0</b><span>衣柜单品</span></div>
+        <div class="stat"><b id="me-c2">0</b><span>评价记录</span></div>
+        <div class="stat"><b id="me-c3">0</b><span>技能 / 工具</span></div>
+      </div>
+    </div>
+
+    <div class="sec-title"><h2>身体与穿衣信息</h2><span class="more" id="me-edit-body">编辑 ›</span></div>
+    <div class="card" id="me-body">
+      <div class="kv" id="me-kv"></div>
+      <p class="muted" style="font-size:12.5px;margin:12px 0 0" id="me-fit">体型特点与偏好会随档案更新</p>
+    </div>
+
+    <div class="sec-title"><h2>我的风格偏好</h2><span class="more" id="me-edit-style">调整 ›</span></div>
+    <div class="card" id="me-style">
+      <div class="chips" id="me-chips"></div>
+      <div class="swatches" id="me-swatches"></div>
+      <p class="muted" style="font-size:12.5px;margin:12px 0 0" id="me-scene">常用场景：—</p>
+    </div>
+
+    <p class="noteline" style="margin:0 2px 12px">🛡 个人信息仅用于专属推荐，你可以随时修改。</p>
+    <button class="btn" id="me-save">保存档案，更新我的推荐</button>
+    <button class="btn line" id="me-fb" style="margin-top:10px">💬 评价与反馈（越用越懂你）</button>
+  </section>
+  </div><!-- /.views -->
+
+  <!-- ======================= 底部导航 ======================= -->
+  <nav class="tabbar">
+    <button class="tab on" data-tab="home"><span class="ic">🏠</span>首页</button>
+    <button class="tab" data-tab="wardrobe"><span class="ic">👕</span>衣橱</button>
+    <button class="tab" data-tab="chat"><span class="ic">✨</span>搭配助手</button>
+    <button class="tab" data-tab="me"><span class="ic">👤</span>我的</button>
+  </nav>
+
+  <!-- ======================= 子页：天气详情 ======================= -->
+  <div class="subview" id="sub-weather">
+    <div class="subhead">
+      <button class="iconbtn back" data-back>‹</button>
+      <h1>天气详情</h1>
+      <button class="iconbtn" id="wx-refresh" title="刷新">⟳</button>
+    </div>
+    <div class="row between" style="margin:0 2px 14px">
+      <b id="wx-city">—</b>
+      <span class="muted" style="font-size:12.5px" id="wx-updated">刚刚更新</span>
+    </div>
+    <div class="card sky">
+      <div class="wx-top">
+        <div>
+          <div class="wx-temp" id="wxd-temp">--<small>°</small></div>
+          <div class="wx-line" id="wxd-cond">—</div>
+          <div class="wx-line" id="wxd-range" style="color:var(--ink2)">—</div>
+        </div>
+        <div class="wx-icon" id="wxd-icon">⛅</div>
+      </div>
+      <div class="kv" style="margin-top:14px;grid-template-columns:repeat(3,1fr)">
+        <div class="cell" style="background:rgba(255,255,255,.6)"><i>体感</i><b id="wxd-feel">—</b></div>
+        <div class="cell" style="background:rgba(255,255,255,.6)"><i>降雨概率</i><b id="wxd-pop">—</b></div>
+        <div class="cell" style="background:rgba(255,255,255,.6)"><i>风</i><b id="wxd-wind">—</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px">
+        <b style="font-size:16px">逐小时预报</b>
+        <span class="muted" style="font-size:12.5px" id="wxd-extra">—</span>
+      </div>
+      <div class="hrt-out" id="wxd-hours"></div>
+    </div>
+
+    <div class="card sage">
+      <div class="row" style="gap:9px;margin-bottom:6px">
+        <span style="font-size:19px">👕</span>
+        <b style="font-size:16px;color:var(--sage-ink)">今天穿什么</b>
+      </div>
+      <p class="why" id="wxd-advice">加载中…</p>
+      <div class="chips" style="margin-top:10px">
+        <span class="chip sage" id="wxd-chip1">—</span>
+        <span class="chip sage" id="wxd-chip2">—</span>
+        <span class="chip sage" id="wxd-chip3">—</span>
+      </div>
+    </div>
+
+    <button class="btn" id="wxd-ask">✨ 根据天气，看看今日穿搭</button>
+    <p class="muted" style="text-align:center;font-size:12px;margin:12px 0 0">天气数据每 30 分钟更新 · 穿衣建议已同步至搭配助手</p>
+  </div>
+
+  <!-- ======================= 子页：地理信息 ======================= -->
+  <div class="subview" id="sub-geo">
+    <div class="subhead">
+      <button class="iconbtn back" data-back>‹</button>
+      <h1>地理信息</h1>
+      <button class="iconbtn" id="geo-refresh" title="重新定位">⟳</button>
+    </div>
+    <div class="map">
+      <div class="water"></div>
+      <div class="road" style="left:0;right:0;top:32%"></div>
+      <div class="road" style="left:0;right:0;top:62%;height:6px"></div>
+      <div class="lbl" style="left:8%;top:34%">城区</div>
+      <div class="lbl" style="right:8%;top:56%">大学路</div>
+      <div class="pin"><div class="dot2"></div></div>
+      <div class="here" id="geo-here">你在这里</div>
+      <div class="recenter">◎</div>
+    </div>
+    <div class="card">
+      <div class="row" style="gap:10px">
+        <span style="font-size:20px">📍</span>
+        <div class="grow" style="min-width:0">
+          <b style="font-size:16.5px" id="geo-city">定位中…</b>
+          <p class="muted" style="font-size:12.5px;margin:2px 0 0" id="geo-addr">—</p>
+        </div>
+        <span class="badge" id="geo-badge">已定位</span>
+      </div>
+    </div>
+    <div class="card sage">
+      <b style="font-size:16px;color:var(--sage-ink)">让穿搭更懂你的出行</b>
+      <p class="why" style="margin:8px 0 0" id="geo-advice">根据你所在城市的天气与出行场景，小智会优先推荐好走路的鞋、方便穿脱的外套。</p>
+      <p class="muted" style="font-size:12px;margin:10px 0 0">仅用于本地天气与穿搭建议，可随时关闭定位。</p>
+    </div>
+    <button class="btn" id="geo-use">✓ 使用当前位置，更新推荐</button>
+  </div>
+
+  <!-- ======================= 子页：今日穿搭方案 ======================= -->
+  <div class="subview" id="sub-plan">
+    <div class="subhead">
+      <button class="iconbtn back" data-back>‹</button>
+      <h1>今日穿搭方案</h1>
+      <button class="iconbtn" id="plan-like" title="收藏">♡</button>
+    </div>
+    <h2 style="margin:0 0 4px;font-size:24px;font-weight:800" id="plan-title">—</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 14px" id="plan-sub">—</p>
+    <div class="plan-hero"><div class="ph">🧥<span>由你的衣柜自动搭配</span></div></div>
+    <div class="chips" style="margin-bottom:14px" id="plan-chips"></div>
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px">
+        <b style="font-size:16.5px">这一套，穿什么</b>
+        <span class="more" style="font-size:13px;color:var(--accent)" id="plan-swap">替换单品 ›</span>
+      </div>
+      <div class="spec-grid" id="plan-specs"></div>
+    </div>
+    <div class="card sage">
+      <div class="row" style="gap:9px;margin-bottom:6px"><span style="font-size:19px">✨</span>
+        <b style="font-size:16px;color:var(--sage-ink)">为什么适合你</b></div>
+      <p class="why" id="plan-why">—</p>
+    </div>
+    <div class="row" style="gap:10px">
+      <button class="btn ghost" id="plan-again" style="flex:1">🔁 换一套</button>
+      <button class="btn" id="plan-wear" style="flex:1.3">✓ 就穿这套</button>
+    </div>
+  </div>
+</div><!-- /.app -->
+
+<!-- ======================= 弹窗容器 ======================= -->
+<div class="modal-mask" id="wd-modal"></div>
+<div class="modal-mask" id="pf-modal"></div>
+<div class="modal-mask" id="fb-modal"></div>
+<div id="toasts"></div>
+
+<script>
+/* ================= 智衣橱 · 前端应用 ================= */
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const j = (u, o) => fetch(u, o).then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t || ('HTTP ' + r.status)); }));
+
+  /* ---------- Toast ---------- */
+  function toast(msg, ms = 2200) {
+    const t = el('div', 'toast', esc(msg));
+    $('#toasts').appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, ms);
+  }
+
+  /* ---------- 状态 ---------- */
+  const S = {
+    info: null, wardrobe: [], categories: [], seasons: ['春', '夏', '秋', '冬'],
+    profile: null, profileFields: [], profileConfigured: false,
+    feedback: { items: [], summary: null, ratings: [] },
+    weather: null, wdQuery: '', wdCat: '全部', tab: 'home'
+  };
+
+  /* ================= 通用：子页 & 弹窗 ================= */
+  const subs = ['sub-weather', 'sub-geo', 'sub-plan'];
+  function openSub(id) { $( '#' + id).classList.add('open'); }
+  function closeSubs() { subs.forEach(s => $('#' + s).classList.remove('open')); }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-back]')) closeSubs();
+  });
+  function openMask(id) { $('#' + id).classList.add('open'); }
+  function closeMask(id) { $('#' + id).classList.remove('open'); $('#' + id).innerHTML = ''; }
+  document.addEventListener('click', (e) => {
+    if (e.target.classList && e.target.classList.contains('modal-mask')) closeMask(e.target.id);
+  });
+
+  /* ================= 标签切换 ================= */
+  function setTab(tab) {
+    S.tab = tab;
+    $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + tab));
+    $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    closeSubs();
+    const view = $('#view-' + tab);
+    if (view) view.scrollTop = 0;
+    if (tab === 'wardrobe') renderWardrobe();
+    if (tab === 'me') renderMe();
+    if (tab === 'chat') setTimeout(() => $('#chat-input').focus(), 60);
+    if (tab === 'home') renderHome();
+  }
+  $$('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+  /* ================= 工具函数 ================= */
+  function aspectColor(hex) { return hex; }
+  function itemThumb(it) {
+    if (it.image) {
+      const src = String(it.image).startsWith('http') || String(it.image).startsWith('data:')
+        ? it.image : '/api/wardrobe/image/' + encodeURIComponent(String(it.image).replace(/^images\//, ''));
+      return `<img src="${esc(src)}" alt="${esc(it.name)}" loading="lazy" />`;
+    }
+    const emoji = catEmoji(it.category);
+    return `<span style="font-size:26px">${emoji}</span>`;
+  }
+  const CAT_EMOJI = [['外套', '🧥'], ['大衣', '🧥'], ['羽绒服', '🧥'], ['西装', '🥼'], ['衬衫', '👔'], ['针织', '🧶'], ['毛衣', '🧶'], ['卫衣', '👕'], ['上衣', '👚'], ['裤装', '👖'], ['牛仔', '👖'], ['裙装', '👗'], ['连衣裙', '👗'], ['鞋', '👟'], ['包', '👜'], ['帽', '🧢'], ['围巾', '🧣'], ['配饰', '🕶']];
+  function catEmoji(cat) { const c = String(cat || ''); for (const [k, v] of CAT_EMOJI) if (c.includes(k)) return v; return '👕'; }
+  function colorHex(name) {
+    const m = { 白: '#ffffff', 米色: '#e6dcc8', 米: '#e6dcc8', 黑: '#333333', 灰: '#9aa0a6', 深灰: '#616161', 蓝: '#4a6fa5', 浅蓝: '#a8c4dd', 靛蓝: '#3d5a80', 牛仔蓝: '#5b7fa6', 绿: '#6b7f5c', 橄榄绿: '#7a8457', 军绿: '#5f6b46', 卡其: '#c3b091', 驼: '#c8a887', 棕: '#7b5b3a', 咖: '#6b4f3a', 红: '#b4433a', 粉: '#e6b8b8', 黄: '#e8c86a', 橙: '#d98b4a', 紫: '#8b7ba8', 藏青: '#2f4159', 燕麦: '#ddd2bd' };
+    const c = String(name || ''); for (const k in m) if (c.includes(k)) return m[k];
+    return '#d8d2c8';
+  }
+  function todayStr() {
+    const d = new Date(), w = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+    return `${d.getMonth() + 1}月${d.getDate()}日 周${w}`;
+  }
+  function greetByHour() {
+    const h = new Date().getHours();
+    if (h < 6) return '夜深了';
+    if (h < 11) return '早上好';
+    if (h < 14) return '中午好';
+    if (h < 18) return '下午好';
+    return '晚上好';
+  }
+  const WMO = { 0: '晴', 1: '晴间多云', 2: '多云', 3: '阴', 45: '雾', 48: '雾凇', 51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨', 56: '冻毛毛雨', 57: '强冻毛毛雨', 61: '小雨', 63: '中雨', 65: '大雨', 66: '冻雨', 67: '强冻雨', 71: '小雪', 73: '中雪', 75: '大雪', 77: '雪粒', 80: '阵雨', 81: '强阵雨', 82: '暴雨', 85: '阵雪', 86: '强阵雪', 95: '雷阵雨', 96: '雷阵雨伴冰雹', 99: '强雷暴' };
+  function wmoText(code, fallback) { return WMO[code] || fallback || '—'; }
+  function wmoIcon(code, isDay) {
+    const c = Number(code);
+    if (c === 0 || c === 1) return isDay === false ? '🌙' : '☀️';
+    if (c === 2) return '⛅';
+    if (c === 3) return '☁️';
+    if (c === 45 || c === 48) return '🌫';
+    if (c >= 51 && c <= 67) return '🌧';
+    if (c >= 71 && c <= 77) return '❄️';
+    if (c >= 80 && c <= 82) return '🌧';
+    if (c >= 85 && c <= 86) return '🌨';
+    if (c >= 95) return '⛈';
+    return '⛅';
+  }
+
+  /* ================= 数据加载 ================= */
+  async function loadInfo() {
+    try { S.info = await j('/api/info'); } catch (e) { S.info = null; }
+    return S.info;
+  }
+  async function loadWardrobe() {
+    try {
+      const r = await j('/api/wardrobe');
+      S.wardrobe = r.items || [];
+      if (r.categories) S.categories = r.categories;
+      if (r.seasons) S.seasons = r.seasons;
+    } catch (e) { S.wardrobe = []; }
+    return S.wardrobe;
+  }
+  async function loadProfile() {
+    try {
+      const r = await j('/api/profile');
+      S.profile = r.profile || {};
+      S.profileFields = r.fields || [];
+      const anyVal = ['gender', 'age', 'height', 'weight', 'bodyType', 'occupation', 'city', 'topSize', 'bottomSize', 'shoeSize', 'budget', 'avoid', 'notes'].some(k => String(S.profile[k] || '').trim());
+      const anyArr = ['styles', 'scenarios', 'favColors', 'avoidColors'].some(k => (S.profile[k] || []).length);
+      S.profileConfigured = !!S.profile.configured || anyVal || anyArr;
+    } catch (e) { S.profile = null; S.profileConfigured = false; }
+    return S.profile;
+  }
+  async function loadFeedback() {
+    try { S.feedback = await j('/api/feedback'); } catch (e) { S.feedback = { items: [], summary: null, ratings: [] }; }
+    return S.feedback;
+  }
+  async function loadWeather(force) {
+    try { S.weather = await j('/api/location-weather' + (force ? '?refresh=1' : '')); } catch (e) { S.weather = null; }
+    return S.weather;
+  }
+  async function refreshFeedbackCount() {
+    try { const r = await j('/api/feedback'); S.feedback = r; } catch (e) { }
+  }
+
+  /* ================= 首页 ================= */
+  function renderHome() {
+    $('#home-greet').textContent = greetByHour() + (S.profile && S.profile.name ? '，' + S.profile.name : '');
+    $('#home-sub').textContent = todayStr() + ' · 今天也从容出门';
+
+    const w = S.weather && S.weather.weather;
+    const loc = S.weather && (S.weather.city ? (S.weather.city + (S.weather.district ? ' · ' + S.weather.district : '')) : S.weather.label);
+    if (w) {
+      $('#wx-temp').innerHTML = Math.round(w.temperature) + '<small>°</small>';
+      $('#wx-cond').textContent = wmoText(w.weatherCode, w.condition) + (w.tempMin != null && w.tempMax != null ? `  ${Math.round(w.tempMin)}-${Math.round(w.tempMax)}℃` : '');
+      $('#wx-icon').textContent = wmoIcon(w.weatherCode, w.isDay);
+      $('#wx-hint').textContent = w.hint || (w.temperature < 12 ? '早晚微凉，建议薄外套叠穿' : '温度舒适，轻装出门即可');
+      $('#wx-loc').textContent = '📍 ' + (loc || '当前位置') + ' ›';
+    } else {
+      $('#wx-temp').innerHTML = '--<small>°</small>';
+      $('#wx-cond').textContent = '天气获取失败，点击重试';
+      $('#wx-icon').textContent = '⛅';
+      $('#wx-hint').textContent = '——';
+      $('#wx-loc').textContent = '📍 点击定位 ›';
+    }
+    renderHomeOutfit();
+    $('#home-foot').textContent = `已结合 ${S.wardrobe.length} 件衣物与今日出行环境`;
+  }
+
+  function pickOutfit() {
+    const find = (cats) => S.wardrobe.filter(i => cats.some(c => String(i.category || '').includes(c)));
+    const outer = find(['外套', '大衣', '西装', '羽绒']);
+    const top = find(['衬衫', '针织', '毛衣', '卫衣', '上衣']);
+    const bottom = find(['裤装', '牛仔', '裙装', '连衣裙']);
+    const shoes = find(['鞋']);
+    const acc = find(['包', '配饰', '围巾', '帽']);
+    const take = (a) => a.length ? a[Math.floor(Math.random() * a.length)] : null;
+    return { outer: take(outer), top: take(top), bottom: take(bottom), shoes: take(shoes), acc: take(acc) };
+  }
+  function renderHomeOutfit() {
+    const box = $('#home-outfit');
+    if (!S.wardrobe.length) {
+      box.innerHTML = `<div class="empty" style="padding:26px 12px">
+        <div class="big">👕</div>
+        <b>衣橱还是空的</b>
+        <p class="muted" style="font-size:13px;margin:6px 0 0">先去「衣橱」添加几件衣物，小智就能为你搭今日造型。</p>
+        <button class="btn sm" data-go="wardrobe" style="margin:14px auto 0">去添加衣物</button></div>`;
+      return;
+    }
+    const o = pickOutfit();
+    const items = [o.outer, o.top, o.bottom].filter(Boolean);
+    const w = S.weather && S.weather.weather;
+    const deg = w ? Math.round(w.temperature) : null;
+    const t = location_ok() ? '轻松通勤，刚刚好' : '轻松通勤，刚刚好';
+    const sub = w ? `${wmoText(w.weatherCode, w.condition)} · ${deg}°` : '今日推荐';
+
+    const hasImg = items.some(i => i.image) || (o.shoes && o.shoes.image);
+    let collage;
+    if (!items.length) {
+      collage = `<div class="collage"><div class="ph">🧥<span>暂无足够单品</span></div></div>`;
+    } else if (hasImg) {
+      collage = `<div class="collage ${items.length > 1 ? 'grid2' : ''}">${items.slice(0, 4).map(i => itemThumb(i)).join('')}</div>`;
+    } else {
+      collage = `<div class="collage"><div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div style="display:flex;gap:16px;font-size:44px">${[o.outer, o.top, o.bottom, o.shoes].filter(Boolean).slice(0, 3).map(i => catEmoji(i.category)).join('')}</div>
+        <span style="font-size:12.5px;color:#a79e90">${items.map(i => esc(i.name)).join(' · ')}</span>
+      </div></div>`;
+    }
+
+    box.innerHTML = `
+      <div class="outfit-head">
+        <h3>${esc(t)}</h3>
+        <span class="badge">适配度 ${85 + (items.length * 3) % 12}%</span>
+      </div>
+      ${collage}
+      <div class="chips">
+        ${deg != null ? `<span class="chip gray">${deg}°</span>` : ''}
+        <span class="chip gray">日常通勤</span>
+        <span class="chip sage">来自你的衣橱</span>
+      </div>
+      <p class="outfit-note">${esc(sub)} · 由你的 ${S.wardrobe.length} 件单品自动搭配。</p>`;
+  }
+  function location_ok() { return !!(S.weather && S.weather.city); }
+
+  $('#home-wx').addEventListener('click', () => { openSub('sub-weather'); renderWeatherDetail(); });
+  $('#home-ask').addEventListener('click', () => { setTab('chat'); if (!$('#chat-log').children.length) pushBot('你好呀！今天想穿成什么感觉？告诉我场合、天气或心情，我来帮你搭一套。'); });
+  $('#home-view-plan').addEventListener('click', () => openPlan());
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-go]');
+    if (g) setTab(g.dataset.go);
+  });
+
+  /* ================= 天气详情 ================= */
+  function renderWeatherDetail() {
+    const w = S.weather && S.weather.weather;
+    const loc = S.weather && (S.weather.city ? [S.weather.city, S.weather.district].filter(Boolean).join(' · ') : S.weather.label);
+    $('#wx-city').textContent = loc || '暂无定位';
+    $('#wx-updated').textContent = todayStr() + ' · 刚刚更新';
+    if (!w) {
+      $('#wxd-temp').innerHTML = '--<small>°</small>';
+      $('#wxd-cond').textContent = '数据不可用';
+      return;
+    }
+    $('#wxd-temp').innerHTML = Math.round(w.temperature) + '<small>°</small>';
+    $('#wxd-icon').textContent = wmoIcon(w.weatherCode, w.isDay);
+    $('#wxd-cond').textContent = wmoText(w.weatherCode, w.condition);
+    $('#wxd-range').textContent = (w.tempMin != null && w.tempMax != null) ? `${Math.round(w.tempMin)}-${Math.round(w.tempMax)}℃` : '';
+    $('#wxd-feel').textContent = w.apparentTemperature != null ? Math.round(w.apparentTemperature) + '℃' : '—';
+    $('#wxd-pop').textContent = w.precipitationProbability != null ? w.precipitationProbability + '%' : '—';
+    $('#wxd-wind').textContent = (w.windDirection || '') + (w.windSpeed != null ? ' ' + Math.round(w.windSpeed) + '级' : '') || '—';
+    $('#wxd-extra').textContent = w.uvIndex != null ? `紫外线 ${w.uvIndex}` : (w.humidity != null ? `湿度 ${w.humidity}%` : '');
+
+    const base = Math.round(w.temperature);
+    const hours = [['现在', 0], ['11时', 1], ['14时', 3], ['17时', 5], ['20时', -2]];
+    $('#wxd-hours').innerHTML = hours.map(([t, d]) => {
+      const h = new Date().getHours();
+      return `<div class="h"><div class="t">${t}</div><div class="i">${wmoIcon(w.weatherCode, h + d >= 6 && h + d < 19)}</div><div class="d">${base + d}°</div></div>`;
+    }).join('');
+
+    const temp = w.temperature;
+    let advice, c1, c2, c3;
+    if (temp < 8) { advice = '天气较冷，建议厚外套叠穿针织内搭，注意保暖防风。'; c1 = '厚外套'; c2 = '针织内搭'; c3 = '保暖优先'; }
+    else if (temp < 16) { advice = '早晚偏凉，薄外套 + 长袖内搭最稳，午后可脱外套。'; c1 = '薄外套'; c2 = '长袖内搭'; c3 = (w.precipitationProbability || 0) >= 40 ? '带把伞' : '无需带伞'; }
+    else if (temp < 24) { advice = '温度舒适，单件长袖或薄针织刚好，适合层次穿法。'; c1 = '薄针织'; c2 = '透气内搭'; c3 = '适合叠穿'; }
+    else { advice = '天气偏热，选择透气轻薄材质，避免厚重叠穿。'; c1 = '透气轻薄'; c2 = '浅色系'; c3 = (w.precipitationProbability || 0) >= 40 ? '注意防晒' : '注意防晒'; }
+    $('#wxd-advice').textContent = advice + (w.hint ? ' ' + w.hint : '');
+    $('#wxd-chip1').textContent = c1; $('#wxd-chip2').textContent = c2; $('#wxd-chip3').textContent = c3;
+  }
+  $('#wx-refresh').addEventListener('click', async () => { await loadWeather(true); renderWeatherDetail(); renderHome(); toast('天气已更新'); });
+  $('#wxd-ask').addEventListener('click', () => {
+    closeSubs(); setTab('chat');
+    const w = S.weather && S.weather.weather;
+    const q = w ? `今天 ${S.weather.city || ''} ${wmoText(w.weatherCode, w.condition)} ${Math.round(w.temperature)}℃，帮我搭一套。` : '帮我看今天的穿搭';
+    sendChat(q);
+  });
+
+  /* ================= 地理信息 ================= */
+  function renderGeo() {
+    const s = S.weather;
+    $('#geo-city').textContent = s && s.city ? [s.city, s.district].filter(Boolean).join(' · ') : '未获取到定位';
+    const parts = s ? [s.province, s.city, s.district].filter(Boolean) : [];
+    const addr = s ? Array.from(new Set(parts)).join('') : '';
+    const ip = s && s.ip ? (s.ip.length > 26 ? s.ip.slice(0, 26) + '…' : s.ip) : '';
+    $('#geo-addr').textContent = s ? (addr + (ip ? (addr ? '  ·  ' : '') + ip : '')) || '—' : '—';
+    $('#geo-here').textContent = s && s.city ? `你在这里 · ${s.district || s.city}` : '你在这里';
+    $('#geo-badge').textContent = s && s.city ? '已定位' : '未定位';
+    const w = s && s.weather;
+    $('#geo-advice').textContent = w
+      ? `今日 ${wmoText(w.weatherCode, w.condition)} ${Math.round(w.temperature)}℃，建议选择便于走路的鞋与方便穿脱的外套。`
+      : '根据你所在城市的天气与出行场景，小智会优先推荐好走路的鞋、方便穿脱的外套。';
+  }
+  $('#geo-refresh').addEventListener('click', async () => { await loadWeather(true); renderGeo(); renderHome(); toast('已重新定位'); });
+  $('#geo-use').addEventListener('click', async () => { await loadWeather(true); renderGeo(); renderHome(); toast('已使用当前位置更新推荐'); });
+  $('#btn-geo').addEventListener('click', () => { openSub('sub-geo'); renderGeo(); });
+
+  /* ================= 搭配方案子页 ================= */
+  function openPlan() {
+    const o = pickOutfit();
+    const w = S.weather && S.weather.weather;
+    const deg = w ? Math.round(w.temperature) : null;
+    $('#plan-title').textContent = '轻松秋日通勤';
+    $('#plan-sub').textContent = [S.profile && S.profile.name ? '为' + S.profile.name + '定制' : '为你定制', S.weather && S.weather.city ? S.weather.city + (deg != null ? ' ' + deg + '℃' : '') : (deg != null ? deg + '℃' : ''), '步行与地铁'].filter(Boolean).join(' · ');
+
+    const hero = [o.outer, o.top, o.bottom, o.shoes].filter(Boolean);
+    $('.plan-hero').innerHTML = hero.length
+      ? `<div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px">${hero.slice(0, 4).map(i => itemThumb(i)).join('')}</div>`
+      : `<div class="ph">🧥<span>暂无足够单品</span></div>`;
+
+    const have = hero.length, need = 5;
+    $('#plan-chips').innerHTML = `<span class="chip sage">适配度 ${Math.min(99, 60 + have * 7)}%</span><span class="chip">简约通勤</span><span class="chip gray">衣橱已有 ${have}/${need}</span>`;
+
+    const rows = [['外套', o.outer], ['内搭', o.top], ['下装', o.bottom], ['鞋履', o.shoes], ['配饰', o.acc]];
+    $('#plan-specs').innerHTML = rows.map(([k, it]) =>
+      `<div class="spec"><span class="k">${k}</span><span class="v">${it ? esc(it.name) : '<span class="muted">暂缺</span>'}</span></div>`
+    ).join('') + `<div class="spec" style="grid-column:1/-1"><span class="k">来源</span><span class="v">全部来自你的衣橱</span></div>`;
+
+    const miss = rows.filter(([, it]) => !it).map(([k]) => k);
+    $('#plan-why').textContent = (w && w.hint ? w.hint + '。' : '') +
+      `这套搭配兼顾温度与场合：${o.outer ? esc(o.outer.name) + '应对早晚温差' : '外套可选薄款'}，` +
+      (o.top ? esc(o.top.name) + '透气舒适' : '内搭以透气为主') + '，' +
+      (o.shoes ? esc(o.shoes.name) + '便于通勤行走' : '鞋履优先平底') + '。' +
+      (miss.length ? ` 衣橱里还缺：${miss.join('、')}。` : ' 单品齐全，可直接出门。');
+    openSub('sub-plan');
+  }
+  $('#plan-again').addEventListener('click', () => { openPlan(); toast('换了一套'); });
+  $('#plan-wear').addEventListener('click', async () => {
+    closeSubs(); setTab('chat');
+    const o = pickOutfit();
+    const names = [o.outer, o.top, o.bottom, o.shoes, o.acc].filter(Boolean).map(i => i.name).join(' + ');
+    sendChat(`我决定穿这套：${names || '帮我推荐一套'}。请记录并给出搭配要点。`);
+  });
+  $('#plan-like').addEventListener('click', (e) => { e.currentTarget.textContent = e.currentTarget.textContent === '♡' ? '♥' : '♡'; toast('已收藏'); });
+  $('#plan-swap').addEventListener('click', () => toast('在对话框里说「换一件 X」即可替换单品'));
+  $('#btn-bell').addEventListener('click', () => toast(S.weather && S.weather.weather ? (S.weather.weather.hint || '今日天气平稳') : '暂无提醒'));
+  $('#btn-wd-filter').addEventListener('click', () => { setTab('wardrobe'); $('#wd-q').focus(); });
+
+  /* ================= 衣橱 ================= */
+  function wdList() {
+    const q = S.wdQuery.trim().toLowerCase();
+    return S.wardrobe.filter(i => {
+      const okCat = S.wdCat === '全部' || String(i.category || '') === S.wdCat;
+      if (!okCat) return false;
+      if (!q) return true;
+      const hay = [i.name, i.category, i.material, i.brand, i.notes, (i.colors || []).join(' '), (i.tags || []).join(' '), (i.style || []).join(' ')].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  function renderWardrobe() {
+    $('#wd-sub').textContent = S.wardrobe.length ? `${S.wardrobe.length} 件衣物 · 衣橱就绪` : '每一件衣物，都有新的可能';
+    $('#wd-count').textContent = `共 ${S.wardrobe.length} 件衣物`;
+    const cats = ['全部'].concat(S.categories.length ? S.categories : []);
+    const counts = {};
+    S.wardrobe.forEach(i => { const c = String(i.category || '其他'); counts[c] = (counts[c] || 0) + 1; });
+    $('#wd-cats').innerHTML = cats.map(c =>
+      `<button class="chip ${S.wdCat === c ? 'on' : 'gray'}" data-cat="${esc(c)}">${esc(c)}${c !== '全部' && counts[c] ? ' ' + counts[c] : (c === '全部' ? ' ' + S.wardrobe.length : '')}</button>`
+    ).join('');
+    $$('#wd-cats .chip').forEach(b => b.addEventListener('click', () => { S.wdCat = b.dataset.cat; renderWardrobe(); }));
+
+    const list = wdList();
+    const grid = $('#wd-grid');
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">🧺</div><b>${S.wardrobe.length ? '没有匹配的单品' : '衣橱还是空的'}</b><p class="muted" style="font-size:13px;margin:6px 0 0">${S.wardrobe.length ? '换个关键词或分类试试。' : '点下方按钮拍照或手动录入第一件衣物。'}</p></div>`;
+      grid.style.display = 'block';
+      return;
+    }
+    grid.style.display = 'grid';
+    grid.innerHTML = list.map(i => `
+      <div class="wi" data-id="${esc(i.id)}">
+        <div class="thumb">${itemThumb(i)}<span class="cat">${esc(i.category || '其他')}</span></div>
+        <div class="meta">
+          <div class="nm">${esc(i.name || '未命名单品')}</div>
+          <div class="sub">${esc((i.colors || []).slice(0, 2).join('/') || '—')} · ${esc((i.seasons || []).slice(0, 3).join('/') || '四季')}</div>
+        </div>
+      </div>`).join('');
+    $$('.wi', grid).forEach(n => n.addEventListener('click', () => openItemModal(n.dataset.id)));
+  }
+  $('#wd-q').addEventListener('input', (e) => { S.wdQuery = e.target.value; renderWardrobe(); });
+  $('#wd-sort').addEventListener('click', () => toast('当前按最近添加排序'));
+  $('#wd-add').addEventListener('click', () => openItemModal(null));
+
+  /* ---------- 单品弹窗（新增 / 编辑 / 删除） ---------- */
+  function openItemModal(id) {
+    const it = id ? S.wardrobe.find(x => String(x.id) === String(id)) : null;
+    const cats = S.categories.length ? S.categories : ['上衣', '裤装', '鞋', '外套', '包'];
+    const M = $('#wd-modal');
+    M.innerHTML = `
+      <div class="modal">
+        <div class="mbody">
+          <h3>${it ? '编辑单品' : '添加单品'}</h3>
+          <p class="note">填写信息后保存。也可以先上传图片，让 AI 识别品类与颜色。</p>
+          <div class="field">
+            <label>图片</label>
+            <div class="row" style="align-items:flex-start">
+              <div class="img-prev" id="it-prev">${it && it.image ? `<img src="/api/wardrobe/image/${esc(String(it.image).replace(/^images\//, ''))}" style="width:100%;height:100%;object-fit:cover;border-radius:14px" />` : '📷'}</div>
+              <div class="grow">
+                <button class="btn sm ghost" id="it-pick">选择图片</button>
+                <p class="hint">支持 JPG/PNG/WebP，自动存到工作区。</p>
+              </div>
+            </div>
+            <input type="file" id="it-file" accept="image/*" style="display:none" />
+          </div>
+          <div class="field"><label>名称 *</label><input id="it-name" placeholder="如：米色轻薄风衣" value="${esc(it ? it.name || '' : '')}" /></div>
+          <div class="grid2c">
+            <div class="field"><label>类别</label><select id="it-cat">${cats.map(c => `<option ${it && it.category === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+            <div class="field"><label>材质</label><input id="it-mat" placeholder="棉 / 羊毛 / 聚酯" value="${esc(it ? it.material || '' : '')}" /></div>
+          </div>
+          <div class="field"><label>颜色（逗号分隔）</label><input id="it-colors" placeholder="米色, 白色" value="${esc(it ? (it.colors || []).join(', ') : '')}" /></div>
+          <div class="grid2c">
+            <div class="field"><label>尺码</label><input id="it-size" placeholder="M" value="${esc(it ? it.size || '' : '')}" /></div>
+            <div class="field"><label>品牌</label><input id="it-brand" placeholder="选填" value="${esc(it ? it.brand || '' : '')}" /></div>
+          </div>
+          <div class="field"><label>适合季节</label><div class="chips" id="it-seasons">${S.seasons.map(s => `<button type="button" class="chip ${it && (it.seasons || []).includes(s) ? 'on' : 'gray'}" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>
+          <div class="field"><label>风格标签（逗号分隔）</label><input id="it-style" placeholder="简约通勤, 休闲" value="${esc(it ? (it.style || []).join(', ') : '')}" /></div>
+          <div class="field"><label>备注</label><textarea id="it-notes" placeholder="搭配心得、穿着场合…">${esc(it ? it.notes || '' : '')}</textarea></div>
+        </div>
+        <div class="bar sticky">
+          ${it ? `<button class="del" id="it-del">删除</button>` : `<button id="it-cancel">取消</button>`}
+          <button class="save" id="it-save">${it ? '保存修改' : '保存单品'}</button>
+        </div>
+      </div>`;
+    openMask('wd-modal');
+
+    let imagePath = it ? it.image || '' : '';
+    let picked = null;
+    $$('#it-seasons .chip').forEach(b => b.addEventListener('click', () => b.classList.toggle('on'), ));
+    $('#it-pick').addEventListener('click', () => $('#it-file').click());
+    $('#it-file').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      if (f.size > 8 * 1024 * 1024) return toast('图片请小于 8MB');
+      const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+      picked = dataUrl;
+      $('#it-prev').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:14px" />`;
+      $('#it-prev').dataset.data = dataUrl;
+    });
+    if ($('#it-cancel')) $('#it-cancel').addEventListener('click', () => closeMask('wd-modal'));
+    if ($('#it-del')) $('#it-del').addEventListener('click', async () => {
+      if (!confirm('确定删除这件单品？')) return;
+      try {
+        await fetch('/api/wardrobe?id=' + encodeURIComponent(it.id), { method: 'DELETE' });
+        closeMask('wd-modal'); await loadWardrobe(); renderWardrobe(); renderHome(); toast('已删除');
+      } catch (e) { toast('删除失败：' + e.message); }
+    });
+    $('#it-save').addEventListener('click', async () => {
+      const name = $('#it-name').value.trim();
+      if (!name) return toast('请填写名称');
+      const seasons = $$('#it-seasons .chip.on').map(b => b.dataset.s);
+      const p = {
+        name,
+        category: $('#it-cat').value,
+        material: $('#it-mat').value.trim(),
+        colors: $('#it-colors').value.split(/[,，\s]+/).map(s => s.trim()).filter(Boolean),
+        size: $('#it-size').value.trim(),
+        brand: $('#it-brand').value.trim(),
+        seasons,
+        style: $('#it-style').value.split(/[,，]/).map(s => s.trim()).filter(Boolean),
+        notes: $('#it-notes').value.trim()
       };
+      if (it) p.id = it.id;
+      // 衣柜接口直接接受 dataURL，自动落盘为 images/<file>
+      if (picked) p.image = picked;
+      else if (it && !imagePath) p.image = '';
+      try {
+        if (it) await j('/api/wardrobe', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) });
+        else await j('/api/wardrobe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) });
+        closeMask('wd-modal'); await loadWardrobe(); renderWardrobe(); renderHome(); toast(it ? '已保存修改' : '已添加衣物');
+      } catch (e) { toast('保存失败：' + e.message); }
+    });
+  }
 
-      async function loadEnv() {
-        const card = $('#env-card');
-        card.classList.remove('err');
-        card.innerHTML = '<span class="spin">定位中…</span>';
-        try {
-          const r = await fetch('/api/location-weather');
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          const w = d.weather || {};
-          const loc = [d.city, d.district].filter(Boolean).join(' · ') || d.label || '未知位置';
-          if (w.error) {
-            card.classList.add('err');
-            card.innerHTML =
-              `<span class="ico">📍</span><div class="wx"><span class="cond">${esc(loc)}</span>` +
-              `<span class="loc">天气获取失败</span></div>`;
-            return;
+  /* ================= 我的 ================= */
+  function renderMe() {
+    const p = S.profile || {};
+    const has = S.profileConfigured;
+    const name = p.nickname || p.name || '';
+    $('#me-avatar').textContent = name ? name.slice(0, 1) : (has ? '衣' : '新');
+    $('#me-name').textContent = name || (has ? '我的穿搭档案' : '还没填档案');
+    $('#me-bio').textContent = p.notes || p.bio || (has ? '穿得自在，也穿得像自己' : '填一下档案，推荐会更懂你');
+
+    $('#me-c1').textContent = S.wardrobe.length;
+    $('#me-c2').textContent = (S.feedback.summary && S.feedback.summary.total) || (S.feedback.items || []).length;
+    const t = S.info ? (S.info.tools || []).length : 0, k = S.info ? (S.info.skills || []).length : 0;
+    $('#me-c3').textContent = t + k;
+
+    const cells = [
+      ['身高', p.height ? p.height + (String(p.height).match(/[cm厘]/) ? '' : ' 厘米') : '—'],
+      ['体重', p.weight ? p.weight + (String(p.weight).match(/[kg公斤]/) ? '' : ' 公斤') : '—'],
+      ['常穿尺码', p.topSize || p.bottomSize || p.shoeSize || '—']
+    ];
+    $('#me-kv').innerHTML = cells.map(([k, v]) => `<div class="cell"><i>${k}</i><b>${esc(v)}</b></div>`).join('');
+    const fit = [p.bodyType, p.occupation, p.gender, p.age && (p.age + '岁')].filter(Boolean).join(' · ');
+    $('#me-fit').textContent = fit || (has ? '体型特点与偏好已记录' : '体型特点与偏好会随档案更新');
+
+    const styles = (p.styles || []);
+    $('#me-chips').innerHTML = styles.length ? styles.map(s => `<span class="chip on">${esc(s)}</span>`).join('')
+      : `<span class="chip gray">还没有风格标签</span>`;
+    const cols = (p.favColors || []).slice(0, 6);
+    $('#me-swatches').innerHTML = cols.length ? cols.map(c => `<span class="sw" style="background:${colorHex(c)}" title="${esc(c)}"></span>`).join('') + `<span class="muted" style="font-size:12px;margin-left:2px">常用色系</span>`
+      : `<span class="muted" style="font-size:12.5px">常用色系：—</span>`;
+    $('#me-scene').textContent = '常用场景：' + ((p.scenarios || []).join('、') || '—');
+  }
+
+  /* ---------- 档案编辑弹窗 ---------- */
+  function openProfileModal() {
+    const p = S.profile || {};
+    const fields = S.profileFields || [];
+    const M = $('#pf-modal');
+    const input = (k, label, ph, val) => `<div class="field"><label>${label}</label><input id="pf-${k}" placeholder="${esc(ph || '')}" value="${esc(val || '')}" /></div>`;
+    const chips = (k, label, all, cur) => `<div class="field"><label>${label}</label><div class="chips" id="pf-${k}">${all.map(s => `<button type="button" class="chip ${cur.includes(s) ? 'on' : 'gray'}" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>`;
+    const STYLES = ['简约通勤', '自然休闲', '低饱和色', '街头潮流', '运动机能', '复古文艺', '甜美森系', '商务正式'];
+    const SCENES = ['日常通勤', '周末散步', '朋友聚会', '约会', '运动健身', '正式场合', '旅行'];
+    const COLORS = ['米色', '白', '黑', '灰', '藏青', '蓝', '绿', '橄榄绿', '棕', '驼', '粉', '酒红'];
+
+    M.innerHTML = `
+      <div class="modal">
+        <div class="mbody">
+          <h3>个人档案</h3>
+          <p class="note">信息仅用于本地穿搭推荐，随时可改。</p>
+          <div class="grid2c">
+            ${input('nickname', '称呼（选填）', '如：小林', p.nickname)}
+            ${input('gender', '性别', '女 / 男 / 其他', p.gender)}
+          </div>
+          <div class="grid2c">
+            ${input('age', '年龄', '如：28', p.age)}
+            ${input('occupation', '职业', '如：设计师', p.occupation)}
+          </div>
+          <div class="grid2c">
+            ${input('height', '身高（厘米）', '如：165', p.height)}
+            ${input('weight', '体重（公斤）', '如：52', p.weight)}
+          </div>
+          <div class="grid2c">
+            ${input('bodyType', '体型', '如：梨形身材', p.bodyType)}
+            ${input('city', '城市', '如：杭州', p.city)}
+          </div>
+          <div class="grid2c">
+            ${input('topSize', '上衣尺码', 'M', p.topSize)}
+            ${input('bottomSize', '下装尺码', 'M / 27', p.bottomSize)}
+          </div>
+          <div class="grid2c">
+            ${input('shoeSize', '鞋码', '38', p.shoeSize)}
+            ${input('budget', '预算', '如：中等 / 注重性价比', p.budget)}
+          </div>
+          ${chips('styles', '风格偏好', STYLES, p.styles || [])}
+          ${chips('scenarios', '常用场景', SCENES, p.scenarios || [])}
+          ${chips('favColors', '常用色系', COLORS, p.favColors || [])}
+          ${chips('avoidColors', '少穿的色', ['荧光色', '大红', '亮黄', '亮粉'], p.avoidColors || [])}
+          <div class="field"><label>要避免</label><textarea id="pf-avoid" placeholder="如：不喜欢太紧绷的版型">${esc(p.avoid || '')}</textarea></div>
+          <div class="field"><label>备注</label><textarea id="pf-notes" placeholder="其他偏好…">${esc(p.notes || '')}</textarea></div>
+        </div>
+        <div class="bar sticky">
+          <button id="pf-cancel">取消</button>
+          <button class="save" id="pf-save">保存档案</button>
+        </div>
+      </div>`;
+    openMask('pf-modal');
+    $$('#pf-modal .chips .chip').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+    $('#pf-cancel').addEventListener('click', () => closeMask('pf-modal'));
+    $('#pf-save').addEventListener('click', async () => {
+      const val = (k) => { const n = $('#pf-' + k); return n ? n.value.trim() : ''; };
+      const chipsOn = (k) => $$('#pf-' + k + ' .chip.on').map(b => b.dataset.v);
+      const body = {
+        nickname: val('nickname'), gender: val('gender'), age: val('age'), occupation: val('occupation'),
+        height: val('height'), weight: val('weight'), bodyType: val('bodyType'), city: val('city'),
+        topSize: val('topSize'), bottomSize: val('bottomSize'), shoeSize: val('shoeSize'),
+        budget: val('budget'), avoid: val('avoid'), notes: val('notes'),
+        styles: chipsOn('styles'), scenarios: chipsOn('scenarios'),
+        favColors: chipsOn('favColors'), avoidColors: chipsOn('avoidColors')
+      };
+      try {
+        await j('/api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        closeMask('pf-modal'); await loadProfile(); renderMe(); renderHome(); toast('档案已保存');
+      } catch (e) { toast('保存失败：' + e.message); }
+    });
+  }
+  $('#me-edit-body').addEventListener('click', openProfileModal);
+  $('#me-edit-style').addEventListener('click', openProfileModal);
+  $('#me-save').addEventListener('click', openProfileModal);
+  $('#me-fb').addEventListener('click', () => openFeedbackModal());
+
+  /* ================= 反馈：弹窗 ================= */
+  const RATING_FALLBACK = [
+    { key: 'satisfied', label: '满意', icon: '👍', score: 1 },
+    { key: 'neutral', label: '一般', icon: '🤔', score: 0 },
+    { key: 'unsatisfied', label: '不满意', icon: '👎', score: -1 }
+  ];
+  function ratings() { return (S.feedback && S.feedback.ratings && S.feedback.ratings.length) ? S.feedback.ratings : RATING_FALLBACK; }
+
+  function openFeedbackModal(preset) {
+    const M = $('#fb-modal');
+    const sum = S.feedback.summary || { total: 0, byRating: {}, satisfiedRate: 0, painPoints: [], likes: [] };
+    const items = S.feedback.items || [];
+    const rate = ratings();
+    const chosen = preset || '';
+    M.innerHTML = `
+      <div class="modal">
+        <div class="mbody">
+          <h3>评价与反馈</h3>
+          <p class="note">每次推荐后告诉我满不满意，小智会在之后的穿搭里避开你不想重复的，多沿用你认可的做法。</p>
+
+          <div class="fb-stat">
+            <div class="s"><b>${sum.total || 0}</b><span>条记录</span></div>
+            <div class="s"><b>${sum.satisfiedRate != null ? sum.satisfiedRate + '%' : '—'}</b><span>满意率</span></div>
+            <div class="s"><b>${(sum.painPoints || []).length}</b><span>待改进点</span></div>
+          </div>
+
+          <div class="field"><label>这次推荐你满意吗？</label>
+            <div class="fb-rate" id="fb-rate">
+              ${rate.map(r => `<button type="button" data-k="${esc(r.key)}" class="${chosen === r.key ? 'on' : ''}"><span class="e">${esc(r.icon || '')}</span>${esc(r.label)}</button>`).join('')}
+            </div>
+          </div>
+          <div class="field"><label>本次搭配（选填）</label><input id="fb-outfit" placeholder="如：米色风衣 + 白T + 橄榄绿长裤" value="${esc(preset && preset.outfit ? preset.outfit : '')}" /></div>
+          <div class="field"><label>改进建议（选填）</label><textarea id="fb-suggestion" placeholder="希望怎么改？如：想更正式一点 / 换双鞋"></textarea></div>
+          <div class="grid2c">
+            <div class="field"><label>认可的点</label><input id="fb-liked" placeholder="如：配色很清爽" /></div>
+            <div class="field"><label>要避免的点</label><input id="fb-disliked" placeholder="如：袖子太长" /></div>
+          </div>
+
+          <div class="sec-title" style="margin:16px 0 6px"><h2 style="font-size:15px">历史记录</h2><span class="more" id="fb-clear">清空</span></div>
+          <div id="fb-list">
+            ${items.length ? items.slice().reverse().slice(0, 20).map(it => `
+              <div class="fb-item">
+                <span class="em">${esc((rate.find(r => r.key === it.rating) || {}).icon || '📝')}</span>
+                <div class="tx">
+                  <b>${esc((rate.find(r => r.key === it.rating) || {}).label || it.rating || '评价')}</b>
+                  ${it.outfit ? `<p>搭配：${esc(it.outfit)}</p>` : ''}
+                  ${it.suggestion ? `<p>建议：${esc(it.suggestion)}</p>` : ''}
+                  ${it.disliked ? `<p>避免：${esc(it.disliked)}</p>` : ''}
+                  ${it.liked ? `<p>认可：${esc(it.liked)}</p>` : ''}
+                </div>
+                <button class="x" data-del="${esc(it.id)}" title="删除">✕</button>
+              </div>`).join('') : `<p class="muted" style="font-size:13px;padding:8px 0">还没有评价记录。</p>`}
+          </div>
+        </div>
+        <div class="bar sticky">
+          <button id="fb-cancel">关闭</button>
+          <button class="save" id="fb-submit">提交评价</button>
+        </div>
+      </div>`;
+    openMask('fb-modal');
+
+    let picked = chosen;
+    $$('#fb-rate button').forEach(b => b.addEventListener('click', () => {
+      $$('#fb-rate button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); picked = b.dataset.k;
+    }));
+    $('#fb-cancel').addEventListener('click', () => closeMask('fb-modal'));
+    $('#fb-clear').addEventListener('click', async () => {
+      if (!confirm('清空全部评价记录？')) return;
+      try { await fetch('/api/feedback', { method: 'DELETE' }); await loadFeedback(); renderMe(); openFeedbackModal(); toast('已清空'); }
+      catch (e) { toast('清空失败：' + e.message); }
+    });
+    $$('#fb-list [data-del]').forEach(b => b.addEventListener('click', async () => {
+      try { await fetch('/api/feedback?id=' + encodeURIComponent(b.dataset.del), { method: 'DELETE' }); await loadFeedback(); renderMe(); openFeedbackModal(); toast('已删除该条'); }
+      catch (e) { toast('删除失败：' + e.message); }
+    }));
+    $('#fb-submit').addEventListener('click', async () => {
+      if (!picked) return toast('请先选择满意程度');
+      const body = {
+        rating: picked,
+        outfit: $('#fb-outfit').value.trim(),
+        suggestion: $('#fb-suggestion').value.trim(),
+        liked: $('#fb-liked').value.trim(),
+        disliked: $('#fb-disliked').value.trim()
+      };
+      if (!body.suggestion && !body.liked && !body.disliked && !body.outfit) return toast('请至少填写一条内容');
+      try {
+        await j('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        await loadFeedback(); renderMe(); closeMask('fb-modal'); toast('已记录，下次会更懂你');
+      } catch (e) { toast('提交失败：' + e.message); }
+    });
+  }
+
+  /* ================= 反馈：推荐后的快捷评价栏 ================= */
+  function showInlineFeedback(outfitText) {
+    const box = el('div', 'fb-inline');
+    box.innerHTML = `<b>这套满意吗？</b>
+      <button class="chip sage" data-r="satisfied">👍 满意</button>
+      <button class="chip gray" data-r="neutral">🤔 一般</button>
+      <button class="chip gray" data-r="unsatisfied">👎 不满意</button>
+      <button class="chip" data-r="open">✍️ 详细反馈</button>`;
+    box.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-r]'); if (!b) return;
+      const r = b.dataset.r;
+      if (r === 'open') { openFeedbackModal({ outfit: outfitText }); return; }
+      try {
+        await j('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rating: r, outfit: outfitText || '' }) });
+        await loadFeedback();
+        box.innerHTML = `<b>已记录</b><span class="muted">谢谢！下次推荐会参考这次评价。</span>`;
+        renderMe();
+      } catch (err) { toast('记录失败：' + err.message); }
+    });
+    return box;
+  }
+  function maybeOfferFeedback(outfit) {
+    if (!outfit) return;
+    $('#chat-log').appendChild(showInlineFeedback(outfit));
+    scrollChat();
+  }
+
+  /* ================= 聊天 ================= */
+  let busy = false;
+  function scrollChat() { const l = $('#chat-log'); l.scrollTop = l.scrollHeight; }
+  function pushUser(text) {
+    const n = el('div', 'm user');
+    n.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+    $('#chat-log').appendChild(n); scrollChat();
+  }
+  function pushBot(text) {
+    const n = el('div', 'm bot');
+    n.innerHTML = `<div class="av">✨</div><div class="bubble">${esc(text)}</div>`;
+    $('#chat-log').appendChild(n); scrollChat(); return n.querySelector('.bubble');
+  }
+  function pushNote(text, icon) {
+    const n = el('div', 'noteline', `${icon || '✅'} ${esc(text)}`);
+    $('#chat-log').appendChild(n); scrollChat();
+  }
+  function pushTool(name) {
+    const n = el('div', 'm bot');
+    n.innerHTML = `<div class="av">✨</div><div class="bubble" style="padding:8px 12px"><span class="tool">🔧 ${esc(name)}</span></div>`;
+    $('#chat-log').appendChild(n); scrollChat(); return n;
+  }
+
+  async function sendChat(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    busy = true;
+    pushUser(text);
+    $('#chat-input').value = ''; autoGrow($('#chat-input'));
+    const bubbleW = el('div', 'm bot');
+    bubbleW.innerHTML = `<div class="av">✨</div><div class="bubble"><span class="spin"></span> 正在思考…</div>`;
+    $('#chat-log').appendChild(bubbleW); scrollChat();
+    const bubble = bubbleW.querySelector('.bubble');
+    let answer = ''; let tools = []; let firstDelta = true;
+
+    try {
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+      if (!res.ok) { const t = await res.text(); throw new Error(t || ('HTTP ' + res.status)); }
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+          const m = chunk.match(/^data:\s*(.*)$/m); if (!m) continue;
+          let ev; try { ev = JSON.parse(m[1]); } catch (e) { continue; }
+          if (ev.type === 'delta') {
+            if (firstDelta) { bubble.innerHTML = ''; firstDelta = false; }
+            answer += ev.text || '';
+            bubble.textContent = answer;
+            scrollChat();
+          } else if (ev.type === 'reasoning') {
+            // 略过推理过程，保持界面简洁
+          } else if (ev.type === 'tool_start') {
+            tools.push(ev.name); pushTool(ev.name);
+          } else if (ev.type === 'tool_end') {
+            if (!ev.ok) pushNote('工具 ' + ev.name + ' 未成功', '⚠️');
+          } else if (ev.type === 'notice') {
+            if (ev.text) pushNote(ev.text, ev.level === 'warn' ? '⚠️' : '✅');
+          } else if (ev.type === 'approval') {
+            pushApproval(ev);
+          } else if (ev.type === 'error') {
+            bubble.innerHTML = `<span style="color:var(--danger)">出错了：${esc(ev.message || '未知错误')}</span>`;
+          } else if (ev.type === 'done') {
+            if (!answer && ev.text) { bubble.textContent = ev.text; answer = ev.text; }
+            if (!answer) bubble.textContent = '（没有返回内容）';
+            const st = el('div', 'step', `· ${ev.steps != null ? ev.steps : tools.length} 步 · ${((ev.ms || 0) / 1000).toFixed(1)}s${ev.stopped ? ' · 已中断' : ''}`);
+            bubble.appendChild(st);
           }
-          const temp = w.temperature != null ? `${Math.round(w.temperature)}°` : '--';
-          const extra = [
-            w.tempMin != null && w.tempMax != null ? `今日 ${Math.round(w.tempMin)}~${Math.round(w.tempMax)}°C` : '',
-            w.apparentTemperature != null ? `体感 ${Math.round(w.apparentTemperature)}°C` : '',
-            w.precipitationProbability != null ? `降水 ${Math.round(w.precipitationProbability)}%` : '',
-            w.windSpeed != null ? `风 ${w.windDirection || ''}${Math.round(w.windSpeed)} km/h` : '',
-            w.humidity != null ? `湿度 ${Math.round(w.humidity)}%` : '',
-            w.uvIndex != null ? `紫外线 ${w.uvIndex}` : ''
-          ].filter(Boolean);
-          card.innerHTML =
-            `<span class="ico">${wxIcon(w.weatherCode, w.isDay)}</span>` +
-            `<span class="temp">${temp}</span>` +
-            `<div class="wx"><span class="cond">${esc(w.condition || '')}</span>` +
-            `<span class="loc">📍 ${esc(loc)}</span></div>` +
-            (extra.length ? `<div class="extra">${extra.map((x) => `<span>${esc(x)}</span>`).join('')}</div>` : '');
-          card.title = (w.hint ? `穿衣提示：${w.hint}\n` : '') + '点击刷新位置与天气';
-        } catch (err) {
-          card.classList.add('err');
-          card.innerHTML = `<span class="ico">📍</span><div class="wx"><span class="cond">位置/天气不可用</span><span class="loc">${esc(err.message)}</span></div>`;
         }
       }
-      $('#env-card').onclick = loadEnv;
-      loadEnv();
+    } catch (e) {
+      bubble.innerHTML = `<span style="color:var(--danger)">请求失败：${esc(e.message)}</span>`;
+    } finally {
+      busy = false;
+      if (answer && answer.length > 20) maybeOfferFeedback(answer.slice(0, 80));
+      scrollChat();
+    }
+  }
 
-      // ---- 衣柜 ----
-      let wdMeta = { categories: [], seasons: ['春', '夏', '秋', '冬'] };
-      let wdItems = [];
-      let wdEditing = null; // 正在编辑的单品 id；null 表示新增
-      let wdImageData = ''; // 新选择的图片 dataURL
+  function pushApproval(ev) {
+    const n = el('div', 'm bot');
+    n.innerHTML = `<div class="av">🛡</div><div class="bubble"><b>需要确认：</b>${esc(ev.tool || '操作')}
+      <div class="step">风险：${esc(ev.risk || '中')}${ev.notes ? ' · ' + esc(ev.notes) : ''}</div>
+      <div class="chips" style="margin-top:8px">
+        <button class="chip sage" data-ap="1">批准</button>
+        <button class="chip gray" data-ap="0">拒绝</button>
+      </div></div>`;
+    n.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-ap]'); if (!b) return;
+      try { await j('/api/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: ev.id, approved: b.dataset.ap === '1' }) }); }
+      catch (err) { toast('操作失败'); }
+      n.querySelectorAll('[data-ap]').forEach(x => x.disabled = true);
+    });
+    $('#chat-log').appendChild(n); scrollChat();
+  }
 
-      async function loadWardrobe() {
-        const el = $('#wardrobe');
-        try {
-          const r = await fetch('/api/wardrobe');
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          wdItems = d.items || [];
-          wdMeta = { categories: d.categories || [], seasons: d.seasons || [] };
-          const badge = $('#btn-wardrobe');
-          badge.textContent = `衣柜 (${wdItems.length})`;
-          renderWardrobe();
-        } catch (err) {
-          el.innerHTML = `<h3>衣柜</h3><div class="wd-empty">加载失败：${esc(err.message)}</div>`;
-        }
-      }
+  function autoGrow(t) { t.style.height = 'auto'; t.style.height = Math.min(96, t.scrollHeight) + 'px'; }
+  $('#chat-input').addEventListener('input', (e) => autoGrow(e.target));
+  $('#chat-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); }
+  });
+  $('#chat-send').addEventListener('click', () => sendChat($('#chat-input').value));
+  $('#chat-back').addEventListener('click', () => setTab('home'));
 
-      function renderWardrobe() {
-        const el = $('#wardrobe');
-        if (!wdItems.length) {
-          el.innerHTML =
-            `<h3>衣柜 (0)</h3>` +
-            `<div style="margin-bottom:12px"><button id="wd-add" style="border-color:var(--accent);color:var(--accent)">+ 添加衣物</button></div>` +
-            `<div class="wd-empty">衣柜为空。<br>点击上方「+ 添加衣物」录入你的单品（名称、类别、颜色、材质、季节、风格，可上传图片）。<br>录入后，穿搭管家只会从衣柜里挑选衣物来搭配。</div>`;
-          $('#wd-add').onclick = () => openWardrobeModal(null);
-          return;
-        }
-        const card = (it) => {
-          const tags = [it.category, ...(it.colors || []), ...(it.seasons || []), ...(it.style || [])]
-            .filter(Boolean)
-            .slice(0, 6)
-            .map((t) => `<span class="badge">${esc(t)}</span>`)
-            .join('');
-          const thumb = it.image
-            ? `<div class="thumb" style="background-image:url('/api/wardrobe/image/${esc(it.image.split('/').pop())}')"></div>`
-            : `<div class="thumb">👕</div>`;
-          return (
-            `<div class="wd-card" data-id="${esc(it.id)}">${thumb}` +
-            `<div class="body"><div class="nm">${esc(it.name)}</div>` +
-            `<div class="tags">${tags}</div>` +
-            `<div class="acts"><button class="wd-edit">编辑</button><button class="wd-del">删除</button></div>` +
-            `</div></div>`
-          );
-        };
-        el.innerHTML =
-          `<h3>衣柜 (${wdItems.length})</h3>` +
-          `<div style="margin-bottom:12px"><button id="wd-add" style="border-color:var(--accent);color:var(--accent)">+ 添加衣物</button></div>` +
-          `<div class="wd-grid">${wdItems.map(card).join('')}</div>`;
-        $('#wd-add').onclick = () => openWardrobeModal(null);
-        el.querySelectorAll('.wd-card').forEach((c) => {
-          const id = c.dataset.id;
-          c.querySelector('.wd-edit').onclick = () => openWardrobeModal(id);
-          c.querySelector('.wd-del').onclick = () => deleteWardrobeItem(id);
-        });
-      }
+  const QUICK = ['今天去公司，想穿得舒服又精神', '周末散步，想要休闲一点', '帮我用衣橱里现有的衣服搭一套', '想更正式一点'];
+  function renderQuick() {
+    $('#chat-quick').innerHTML = QUICK.map(q => `<button class="chip">${esc(q)}</button>`).join('');
+    $$('#chat-quick .chip').forEach(b => b.addEventListener('click', () => sendChat(b.textContent)));
+  }
 
-      function openWardrobeModal(id) {
-        wdEditing = id;
-        wdImageData = '';
-        const it = id ? wdItems.find((x) => x.id === id) : null;
-        const catOpts = wdMeta.categories
-          .map((c) => `<option value="${esc(c)}"${it && it.category === c ? ' selected' : ''}>${esc(c)}</option>`)
-          .join('');
-        const seasonBox = wdMeta.seasons
-          .map(
-            (s) =>
-              `<label style="font-size:12px;color:var(--dim);display:inline-flex;gap:4px;align-items:center;margin-right:10px">` +
-              `<input type="checkbox" class="wd-season" value="${esc(s)}"${it && (it.seasons || []).includes(s) ? ' checked' : ''}/>${esc(s)}</label>`
-          )
-          .join('');
-        const prev = it && it.image ? `background-image:url('/api/wardrobe/image/${esc(it.image.split('/').pop())}')` : '';
-        $('#wd-modal').innerHTML =
-          `<div class="modal">` +
-          `<h3>${it ? '编辑衣物' : '添加衣物'}</h3>` +
-          `<div class="field"><label>图片（可选，点击上传）</label>` +
-          `<div style="display:flex;gap:12px;align-items:center">` +
-          `<div class="img-prev" id="wd-prev" style="${prev}">${it && it.image ? '' : '📷'}</div>` +
-          `<div style="flex:1"><input type="file" id="wd-file" accept="image/*" />` +
-          `<div class="hintline">支持 png/jpg/webp/gif，最大 8MB。</div>` +
-          `<div style="margin-top:8px"><button id="wd-scan" style="border-color:var(--accent);color:var(--accent)">🔍 识别图片参数</button></div>` +
-          `<div class="hintline" id="wd-scan-hint">上传或已有图片后，可让 AI 识别材质/颜色/版型等参数并自动填入。</div>` +
-          `</div></div></div>` +
-          `<div class="field"><label>名称 *</label><input id="wd-name" value="${it ? esc(it.name) : ''}" placeholder="如：白色府绸衬衫" /></div>` +
-          `<div class="field"><label>类别</label><select id="wd-cat"><option value="">（未分类）</option>${catOpts}</select></div>` +
-          `<div class="field"><label>颜色（逗号分隔）</label><input id="wd-colors" value="${it ? esc((it.colors || []).join(', ')) : ''}" placeholder="如：白, 米色" /></div>` +
-          `<div class="field"><label>材质</label><input id="wd-material" value="${it ? esc(it.material || '') : ''}" placeholder="如：棉 / 羊毛 / 真丝" /></div>` +
-          `<div class="field"><label>风格（逗号分隔）</label><input id="wd-style" value="${it ? esc((it.style || []).join(', ')) : ''}" placeholder="如：简约, 通勤" /></div>` +
-          `<div class="field"><label>适合季节</label><div>${seasonBox}</div></div>` +
-          `<div class="field"><label>版型</label><input id="wd-fit" value="${it ? esc(it.fit || '') : ''}" placeholder="如：修身 / 直筒 / 宽松" /></div>` +
-          `<div class="field"><label>尺码</label><input id="wd-size" value="${it ? esc(it.size || '') : ''}" placeholder="如：M / 39" /></div>` +
-          `<div class="field"><label>品牌</label><input id="wd-brand" value="${it ? esc(it.brand || '') : ''}" /></div>` +
-          `<div class="field"><label>备注</label><textarea id="wd-notes" placeholder="新旧程度、搭配注意等">${it ? esc(it.notes || '') : ''}</textarea></div>` +
-          `<div class="bar">` +
-          (it ? `<button class="del" id="wd-del-btn">删除</button>` : '') +
-          `<button id="wd-cancel">取消</button><button class="save" id="wd-save">保存</button></div>` +
-          `</div>`;
-        $('#wd-modal').classList.add('open');
-        $('#wd-prev').onclick = () => $('#wd-file').click();
-        $('#wd-file').onchange = (e) => readImage(e.target.files[0]);
-        $('#wd-scan').onclick = () => scanWardrobeImage(it);
-        $('#wd-cancel').onclick = closeWardrobeModal;
-        $('#wd-save').onclick = saveWardrobeItem;
-        if (it) $('#wd-del-btn').onclick = () => deleteWardrobeItem(it.id);
-      }
+  /* ================= 深链接 ================= */
+  function handleHash() {
+    const h = (location.hash || '').replace(/^#/, '');
+    if (h.startsWith('feedback')) openFeedbackModal();
+    else if (h === 'wardrobe') setTab('wardrobe');
+    else if (h === 'chat') setTab('chat');
+    else if (h === 'me') setTab('me');
+    else if (h === 'weather') { openSub('sub-weather'); renderWeatherDetail(); }
+    else if (h === 'geo') { openSub('sub-geo'); renderGeo(); }
+  }
+  window.addEventListener('hashchange', handleHash);
 
-      async function scanWardrobeImage(it) {
-        const hint = $('#wd-scan-hint');
-        const btn = $('#wd-scan');
-        const image = wdImageData || (it && it.image ? it.image : '');
-        if (!image) return addNotice('请先上传图片，再点识别');
-        btn.disabled = true;
-        const old = hint.textContent;
-        hint.textContent = '识别中…请稍候（约几秒）';
-        try {
-          const r = await fetch('/api/analyze-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image, mode: 'clothing' })
-          });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          const p = d.parsed;
-          if (!p) {
-            hint.textContent = '识别完成，但未返回结构化字段，请手动填写。';
-            addNotice('识别结果非结构化，已跳过自动填入');
-            return;
-          }
-          if (p.name && !$('#wd-name').value.trim()) $('#wd-name').value = p.name;
-          if (p.category) {
-            const opt = [...$('#wd-cat').options].find((o) => o.value === p.category || o.value.includes(p.category));
-            if (opt) $('#wd-cat').value = opt.value;
-          }
-          if (p.colors?.length) $('#wd-colors').value = p.colors.join(', ');
-          if (p.material) $('#wd-material').value = p.material;
-          if (p.style?.length) $('#wd-style').value = p.style.join(', ');
-          if (p.seasons?.length) {
-            document.querySelectorAll('.wd-season').forEach((c) => {
-              c.checked = p.seasons.includes(c.value);
-            });
-          }
-          if (p.fit) $('#wd-fit').value = p.fit;
-          if (p.brand && !$('#wd-brand').value.trim()) $('#wd-brand').value = p.brand;
-          const notes = [p.notes, (p.tags || []).length ? `标签：${p.tags.join('、')}` : ''].filter(Boolean).join('\n');
-          if (notes && !$('#wd-notes').value.trim()) $('#wd-notes').value = notes;
-          const unsure = (p.unsure || []).filter(Boolean);
-          hint.textContent = `已自动填入（模型：${d.model}）${unsure.length ? '；没把握的字段：' + unsure.join('、') : ''}`;
-          addNotice(`识别完成${p.confidence != null ? `（置信度 ${p.confidence}）` : ''}，已填入表单，请核对后保存`);
-        } catch (err) {
-          hint.textContent = old;
-          addNotice(`识别失败：${err.message}`);
-        } finally {
-          btn.disabled = false;
-        }
-      }
+  /* ================= 启动 ================= */
+  async function boot() {
+    renderQuick();
+    showWelcome();
+    // 首屏先渲染，天气异步补齐（避免首屏被外部接口阻塞）
+    await Promise.all([loadInfo(), loadWardrobe(), loadProfile(), loadFeedback()]);
+    renderHome(); renderWardrobe(); renderMe();
+    handleHash();
+    loadWeather().then(() => {
+      renderHome();
+      renderGeo();
+      if ($('#sub-weather').classList.contains('open')) renderWeatherDetail();
+    }).catch(() => { renderHome(); });
+  }
+  function showWelcome() {
+    const log = $('#chat-log');
+    log.innerHTML = `
+      <div class="msgsys">
+        <b>🗂 已了解你的今日状态</b>
+        <span id="sys-weather">天气 —</span><span>·</span><span>日常通勤</span><span>·</span>
+        <span id="sys-wardrobe">— 件衣物</span><span>·</span><span>简约风格</span>
+      </div>`;
+    const b = pushBot('你好呀！先告诉我今天的场合或心情，我会结合天气和你衣橱里的单品，搭一套能直接出门的方案。');
+    if (!document.getElementById('sys-weather')) return;
+    void b;
+  }
+  function refreshSys() {
+    const a = document.getElementById('sys-weather');
+    const c = document.getElementById('sys-wardrobe');
+    const w = S.weather && S.weather.weather;
+    if (a) a.textContent = w ? `${S.weather.city || ''} ${Math.round(w.temperature)}°C` : '天气 —';
+    if (c) c.textContent = `${S.wardrobe.length} 件衣物`;
+  }
 
-      function readImage(file) {
-        if (!file) return;
-        if (file.size > 8 * 1024 * 1024) return addNotice('图片过大（上限 8MB）');
-        const reader = new FileReader();
-        reader.onload = () => {
-          wdImageData = reader.result;
-          $('#wd-prev').style.backgroundImage = `url('${wdImageData}')`;
-          $('#wd-prev').textContent = '';
-        };
-        reader.readAsDataURL(file);
-      }
+  const _renderHome = renderHome;
+  renderHome = function () {
+    _renderHome();
+    refreshSys();
+  };
 
-      function closeWardrobeModal() {
-        $('#wd-modal').classList.remove('open');
-        $('#wd-modal').innerHTML = '';
-        wdEditing = null;
-        wdImageData = '';
-      }
+  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState !== 'loading') boot();
+})();
 
-      async function saveWardrobeItem() {
-        const name = $('#wd-name').value.trim();
-        if (!name) return addNotice('请填写名称');
-        const seasons = [...document.querySelectorAll('.wd-season:checked')].map((c) => c.value);
-        const payload = {
-          name,
-          category: $('#wd-cat').value,
-          colors: $('#wd-colors').value,
-          material: $('#wd-material').value,
-          style: $('#wd-style').value,
-          seasons,
-          fit: $('#wd-fit').value,
-          size: $('#wd-size').value,
-          brand: $('#wd-brand').value,
-          notes: $('#wd-notes').value
-        };
-        if (wdImageData) payload.image = wdImageData;
-        const editing = wdEditing;
-        try {
-          const r = await fetch(editing ? `/api/wardrobe/${encodeURIComponent(editing)}` : '/api/wardrobe', {
-            method: editing ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          closeWardrobeModal();
-          await loadWardrobe();
-          addNotice(editing ? '已更新衣物' : '已添加衣物');
-        } catch (err) {
-          addNotice(`保存失败：${err.message}`);
-        }
-      }
-
-      async function deleteWardrobeItem(id) {
-        const it = wdItems.find((x) => x.id === id);
-        if (!confirm(`确定删除「${it ? it.name : id}」？此操作不可恢复。`)) return;
-        try {
-          const r = await fetch(`/api/wardrobe/${encodeURIComponent(id)}`, { method: 'DELETE' });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          closeWardrobeModal();
-          await loadWardrobe();
-          addNotice('已删除衣物');
-        } catch (err) {
-          addNotice(`删除失败：${err.message}`);
-        }
-      }
-
-      $('#btn-wardrobe').onclick = () => {
-        const opened = $('#wardrobe').classList.toggle('open');
-        if (opened) loadWardrobe();
-      };
-      // 深链接：#wardrobe 直接展开衣柜；#wardrobe/new 同时打开发录入窗；#profile 打开档案；#feedback 打开发馈
-      async function applyHash() {
-        const h = (location.hash || '').replace('#', '');
-        if (h.startsWith('profile')) {
-          openProfileModal();
-        }
-        if (h.startsWith('feedback')) {
-          await openFeedbackModal();
-        }
-        if (h.startsWith('wardrobe')) {
-          $('#wardrobe').classList.add('open');
-          await loadWardrobe();
-          if (h === 'wardrobe/new') openWardrobeModal(null);
-        }
-      }
-      window.addEventListener('hashchange', applyHash);
-      $('#wd-modal').onclick = (e) => {
-        if (e.target.id === 'wd-modal') closeWardrobeModal();
-      };
-      loadWardrobe();
-      applyHash();
-
-      // ---- 用户档案（Profile） ----
-      let pfFields = [];
-      let pfData = {};
-
-      async function loadProfile(autoOpen) {
-        try {
-          const r = await fetch('/api/profile');
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          pfFields = d.fields || [];
-          pfData = d.profile || {};
-          const btn = $('#btn-profile');
-          btn.innerHTML = d.configured ? '档案' : '档案<span class="dot" title="还没填写"></span>';
-          btn.title = d.configured
-            ? '查看/修改你的个人档案'
-            : '你还没填写个人档案，点这里填写（性别、风格偏好、尺码等）';
-          if (autoOpen) openProfileModal();
-        } catch (err) {
-          addNotice(`档案加载失败：${err.message}`);
-        }
-      }
-
-      function pfInput(f) {
-        const v = pfData[f.key];
-        const text = Array.isArray(v) ? v.join(', ') : String(v ?? '');
-        if (f.type === 'textarea') {
-          return `<div class="field full"><label>${esc(f.label)}</label><textarea data-k="${esc(f.key)}" placeholder="${esc(f.placeholder || '')}">${esc(text)}</textarea></div>`;
-        }
-        return `<div class="field"><label>${esc(f.label)}</label><input data-k="${esc(f.key)}" value="${esc(text)}" placeholder="${esc(f.placeholder || '')}" /></div>`;
-      }
-
-      function openProfileModal() {
-        const configured = pfData.configured === true;
-        $('#pf-modal').innerHTML =
-          `<div class="modal">` +
-          `<h3>${configured ? '我的档案' : '填写你的档案'}</h3>` +
-          `<p class="pf-note">这些信息是穿搭管家给建议的依据（性别、年龄、体型、职业、常去场合、风格与颜色偏好、禁忌、尺码等）。` +
-          `${configured ? '' : '花一分钟填几个关键项，推荐会贴合很多；'}留空不填也没关系，随时可改。` +
-          `仅保存在本地 <code>.cloudorder/profile/</code>，不会上传。</p>` +
-          `<div class="pf-cols">${pfFields.map(pfInput).join('')}</div>` +
-          `<div class="bar sticky">` +
-          (configured ? `<button class="del" id="pf-clear">清空档案</button>` : '') +
-          `<button id="pf-cancel">${configured ? '关闭' : '稍后再说'}</button>` +
-          `<button class="save" id="pf-save">保存</button></div>` +
-          `</div>`;
-        $('#pf-modal').classList.add('open');
-        $('#pf-cancel').onclick = closeProfileModal;
-        $('#pf-save').onclick = saveProfileForm;
-        const clr = $('#pf-clear');
-        if (clr) clr.onclick = clearProfileForm;
-      }
-
-      function closeProfileModal() {
-        $('#pf-modal').classList.remove('open');
-        $('#pf-modal').innerHTML = '';
-      }
-
-      async function saveProfileForm() {
-        const patch = {};
-        document.querySelectorAll('#pf-modal [data-k]').forEach((el) => {
-          patch[el.dataset.k] = el.value;
-        });
-        try {
-          const r = await fetch('/api/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patch)
-          });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          pfData = d.profile;
-          closeProfileModal();
-          await loadProfile(false);
-          addNotice('档案已保存，管家下次推荐会参考它');
-        } catch (err) {
-          addNotice(`保存失败：${err.message}`);
-        }
-      }
-
-      async function clearProfileForm() {
-        if (!confirm('确定清空档案？清空后管家将不再依据你的个人信息推荐。')) return;
-        try {
-          const r = await fetch('/api/profile', { method: 'DELETE' });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          closeProfileModal();
-          await loadProfile(false);
-          addNotice('档案已清空');
-        } catch (err) {
-          addNotice(`清空失败：${err.message}`);
-        }
-      }
-
-      $('#btn-profile').onclick = () => openProfileModal();
-      $('#pf-modal').onclick = (e) => {
-        if (e.target.id === 'pf-modal') closeProfileModal();
-      };
-
-      // ---- 用户反馈（评价飞轮） ----
-      let fbCount = 0;
-      let fbRatings = [];
-      let pendingFeedback = null; // { sc: string, outfit: string }
-      const fbLabel = (key) => fbRatings.find((r) => r.key === key) || { icon: '•', label: key || '未知' };
-
-      function mdToHtml(src) {
-        const lines = String(src ?? '').split('\n');
-        const out = lines.map((raw) => {
-          const l = raw.trim();
-          if (!l) return '';
-          if (l.startsWith('#')) return `<div class="fb-h">${esc(l.replace(/^#+\s*/, ''))}</div>`;
-          if (/^[-·•]\s?/.test(l)) return `<div style="padding-left:6px;line-height:1.75">• ${esc(l.replace(/^[-·•]\s?/, ''))}</div>`;
-          return `<div style="line-height:1.75">${esc(l)}</div>`;
-        });
-        return out.join('');
-      }
-
-      function fbChips(list) {
-        return list.map((t) => `<span class="badge">${esc(t)}</span>`).join('');
-      }
-
-      /** 拉取最新评价数据（供弹窗与按钮小红点使用） */
-      async function getFeedbackData() {
-        const r = await fetch('/api/feedback');
-        const d = await r.json();
-        if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-        if (d.ratings) fbRatings = d.ratings;
-        return d;
-      }
-
-      /** 聊天里出现搭配推荐时，在回复下方挂一条快捷评价栏 */
-      function maybeOfferFeedback(text) {
-        const sc = String(text || '').match(/场合[：:]\s*([^\n，。；（）]{2,10})/)?.[1];
-        const hasSig = (sc && /方案|搭配|推荐/.test(text)) || /推荐你|给你搭|可以这样穿/.test(text);
-        if (!hasSig) return;
-        const outfit = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
-        showInlineFeedback({ sc: sc || '', outfit });
-        refreshFeedbackCount();
-      }
-
-      function showInlineFeedback(ctx) {
-        const dup = [...log.querySelectorAll('.fb-inline')].some(
-          (el) => el.dataset.outfit === ctx.outfit && Date.now() - Number(el.dataset.at || 0) < 3 * 60 * 1000
-        );
-        if (dup) return;
-        pendingFeedback = ctx;
-        const d = document.createElement('div');
-        d.className = 'fb-inline';
-        d.dataset.outfit = ctx.outfit;
-        d.dataset.at = String(Date.now());
-        d.innerHTML = '<span>这套怎么样？</span>';
-        const mk = (label, key) => {
-          const b = document.createElement('button');
-          b.textContent = label;
-          b.onclick = () => openFeedbackModal({ rating: key, ...ctx });
-          return b;
-        };
-        d.appendChild(mk('👍 满意', 'satisfied'));
-        d.appendChild(mk('🤔 一般', 'neutral'));
-        d.appendChild(mk('👎 不满意', 'unsatisfied'));
-        const open = document.createElement('button');
-        open.textContent = '反馈';
-        open.onclick = () => openFeedbackModal(ctx);
-        d.appendChild(open);
-        d.appendChild(Object.assign(document.createElement('span'), { textContent: '（点评一下，管家下次会更懂你）' }));
-        log.appendChild(d);
-        scroll();
-      }
-
-      async function openFeedbackModal(preset) {
-        let data;
-        try {
-          data = await getFeedbackData();
-        } catch (err) {
-          return addNotice(`反馈加载失败：${err.message}`);
-        }
-        const sum = data.summary || {};
-        const sel = preset?.rating || '';
-        const ctx = preset?.outfit || '';
-        const items = data.items || [];
-        $('#fb-modal').innerHTML =
-          `<div class="modal wider">` +
-          `<h3>搭配评价 · 越用越懂你</h3>` +
-          (sum.total
-            ? `<p class="fb-stat">已记录 <b>${sum.total}</b> 条评价：` +
-              fbRatings.map((r) => `${r.label} ${sum.byRating?.[r.key] ?? 0}`).join(' · ') +
-              `（满意率 <b>${sum.satisfiedRate}%</b>）</p>` +
-              (sum.painPoints?.length ? `<div class="fb-chips">要避免：${fbChips(sum.painPoints)}</div>` : '')
-            : `<p class="fb-empty">还没有评价记录。每次我给出搭配后，你点一下满意/不满意 + 一句改进建议，我就能越来越懂你。</p>`) +
-          `<div class="field full"><label>这次的搭配（可留空）</label>` +
-          `<input id="fb-outfit" placeholder="如：藏青西装外套 + 白衬衫 + 卡其裤" value="${esc(ctx)}" /></div>` +
-          `<div class="pf-cols">` +
-          `<div class="field"><label>满意度 *</label><select id="fb-rating">` +
-          `<option value="">请选择…</option>` +
-          fbRatings.map((r) => `<option value="${esc(r.key)}"${sel === r.key ? ' selected' : ''}>${esc(r.label)}</option>`).join('') +
-          `</select></div>` +
-          `<div class="field"><label>场合（可留空）</label><input id="fb-scenario" value="${esc(preset?.sc || '')}" placeholder="如：通勤 / 约会" /></div>` +
-          `</div>` +
-          `<div class="field full"><label>改进建议（想怎么改？）</label><textarea id="fb-suggestion" placeholder="如：上衣太正式了，想休闲一点；颜色别太深"></textarea>` +
-          `<div class="hintline">写一句就行——我会把它当成以后的偏好依据（原话保留，不改写）。</div></div>` +
-          `<div class="pf-cols">` +
-          `<div class="field"><label>要避免的点（逗号分隔）</label><input id="fb-disliked" placeholder="如：太正式, 颜色太深" /></div>` +
-          `<div class="field"><label>认可的点（逗号分隔）</label><input id="fb-liked" placeholder="如：版型利落, 配色清爽" /></div>` +
-          `</div>` +
-          (items.length
-            ? `<div class="fb-list"><div class="fb-h">历史评价（${items.length}）</div>${items
-                .map(
-                  (it) =>
-                    `<div class="fb-item" data-id="${esc(it.id)}"><div class="fb-top">` +
-                    `<span>${esc(it.icon || '•')} ${esc(it.label || '')}</span>` +
-                    (it.scenario ? `<span class="badge">${esc(it.scenario)}</span>` : '') +
-                    `<span class="fb-date">${esc(String(it.createdAt || '').slice(5, 10))}</span>` +
-                    `<button class="fb-del" title="删除这条">×</button></div>` +
-                    (it.outfit ? `<div class="fb-txt" style="color:var(--dim)">本次：${esc(it.outfit)}</div>` : '') +
-                    (it.suggestion ? `<div class="fb-txt">改进：${esc(it.suggestion)}</div>` : '') +
-                    (it.disliked?.length ? `<div class="fb-tags">${fbChips(it.disliked)}</div>` : '') +
-                    `</div>`
-                )
-                .join('')}</div>`
-            : '') +
-          `<div class="bar sticky">` +
-          `<button id="fb-cancel">关闭</button>` +
-          `<button class="save" id="fb-save">提交评价</button></div>` +
-          `</div>`;
-        $('#fb-modal').classList.add('open');
-        $('#fb-cancel').onclick = closeFeedbackModal;
-        $('#fb-save').onclick = submitFeedback;
-        $('#fb-modal').querySelectorAll('.fb-del').forEach((b) => {
-          b.onclick = () => deleteFeedback(b.closest('.fb-item').dataset.id);
-        });
-      }
-
-      function closeFeedbackModal() {
-        $('#fb-modal').classList.remove('open');
-        $('#fb-modal').innerHTML = '';
-      }
-
-      async function submitFeedback() {
-        const rating = $('#fb-rating').value;
-        const suggestion = $('#fb-suggestion').value.trim();
-        const outfit = $('#fb-outfit').value.trim();
-        if (!rating) return addNotice('请先选择满意度（满意 / 一般 / 不满意）');
-        if (!suggestion && !outfit && rating === 'neutral') return addNotice('「一般」的话，写一句想怎么改会更有帮助');
-        const parseList = (s) => String(s || '').split(/[,，、/]+/).map((x) => x.trim()).filter(Boolean);
-        try {
-          const r = await fetch('/api/feedback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              rating,
-              outfit,
-              scenario: $('#fb-scenario').value.trim(),
-              suggestion,
-              disliked: parseList($('#fb-disliked').value),
-              liked: parseList($('#fb-liked').value)
-            })
-          });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          addNotice('评价已记录，管家下次推荐会参考它 🎯');
-          fbCount = (d.summary?.total) || fbCount + 1;
-          refreshFeedbackCount();
-          closeFeedbackModal();
-        } catch (err) {
-          addNotice(`提交失败：${err.message}`);
-        }
-      }
-
-      async function deleteFeedback(id) {
-        if (!confirm('删除这条评价？删除后不再作为偏好依据。')) return;
-        try {
-          const r = await fetch(`/api/feedback?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          await openFeedbackModal();
-          refreshFeedbackCount();
-        } catch (err) {
-          addNotice(`删除失败：${err.message}`);
-        }
-      }
-
-      async function refreshFeedbackCount() {
-        try {
-          const r = await fetch('/api/info');
-          const d = await r.json();
-          fbCount = d.feedbackCount || 0;
-          const btn = $('#btn-feedback');
-          btn.innerHTML = fbCount ? `反馈<span class="dot"></span>` : '反馈';
-          btn.title = fbCount ? `已记录 ${fbCount} 条评价，点这里查看/补充` : '每次推荐后点评一下，管家会越来越懂你';
-        } catch {
-          /* 忽略 */
-        }
-      }
-
-      $('#btn-feedback').onclick = () => openFeedbackModal();
-      $('#fb-modal').onclick = (e) => {
-        if (e.target.id === 'fb-modal') closeFeedbackModal();
-      };
-      refreshFeedbackCount();
-
-      function esc(s) {
-        return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-      }
-      function addMsg(role, text, images) {
-        const div = document.createElement('div');
-        div.className = `msg ${role}`;
-        div.innerHTML = `<div class="who">${role === 'user' ? '你' : '穿搭管家'}</div><div class="bubble"></div>`;
-        const bubble = div.querySelector('.bubble');
-        bubble.textContent = text || '';
-        if (images && images.length) {
-          const box = document.createElement('div');
-          box.className = 'msg-imgs';
-          images.forEach((src) => {
-            const img = document.createElement('img');
-            img.src = src;
-            box.appendChild(img);
-          });
-          bubble.appendChild(box);
-        }
-        log.appendChild(div);
-        scroll();
-        return bubble;
-      }
-
-      function scroll() {
-        $('#main').scrollTop = $('#main').scrollHeight;
-      }
-
-      // ---- 聊天附件（图片） ----
-      let attachments = []; // [{ dataUrl, path, url, name }]
-
-      function renderAtts() {
-        const box = $('#chat-atts');
-        box.innerHTML = attachments
-          .map((a, i) => `<div class="att" style="background-image:url('${a.dataUrl}')"><button data-i="${i}" title="移除">×</button></div>`)
-          .join('');
-        box.querySelectorAll('button').forEach((b) => {
-          b.onclick = () => {
-            attachments.splice(Number(b.dataset.i), 1);
-            renderAtts();
-          };
-        });
-      }
-
-      async function addAttachment(file) {
-        if (!file) return;
-        if (!/^image\//.test(file.type)) return addNotice('只能附加图片文件');
-        if (file.size > 8 * 1024 * 1024) return addNotice(`${file.name}：图片过大（上限 8MB）`);
-        if (attachments.length >= 4) return addNotice('最多一次附加 4 张图片');
-        const dataUrl = await new Promise((res, rej) => {
-          const fr = new FileReader();
-          fr.onload = () => res(fr.result);
-          fr.onerror = rej;
-          fr.readAsDataURL(file);
-        });
-        try {
-          const r = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: dataUrl })
-          });
-          const d = await r.json();
-          if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-          attachments.push({ dataUrl, path: d.path, url: d.url, name: file.name });
-          renderAtts();
-        } catch (err) {
-          addNotice(`图片上传失败：${err.message}`);
-        }
-      }
-
-      $('#btn-attach').onclick = () => $('#chat-file').click();
-      $('#chat-file').onchange = async (e) => {
-        for (const f of [...e.target.files]) await addAttachment(f);
-        e.target.value = '';
-      };
-
-      async function send() {
-        const input = $('#input');
-        const text = input.value.trim();
-        if ((!text && !attachments.length) || busy) return;
-        const sending = attachments.slice();
-        input.value = '';
-        attachments = [];
-        renderAtts();
-        addMsg('user', text, sending.map((a) => a.dataUrl));
-        setBusy(true);
-
-        const bubble = addMsg('assistant', '');
-        bubble.classList.add('cursor');
-        current = { bubble, text: '' };
-
-        try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, images: sending.map((a) => a.path) })
-          });
-          if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let buf = '';
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const parts = buf.split('\n\n');
-            buf = parts.pop();
-            for (const part of parts) {
-              const line = part.split('\n').find((l) => l.startsWith('data:'));
-              if (!line) continue;
-              let evt;
-              try { evt = JSON.parse(line.slice(5).trim()); } catch { continue; }
-              handleEvent(evt);
-            }
-          }
-        } catch (err) {
-          addNotice(`连接失败: ${err.message}`);
-        } finally {
-          if (current?.bubble) current.bubble.classList.remove('cursor');
-          log.querySelectorAll('.cursor').forEach((el) => el.classList.remove('cursor'));
-          current = null;
-          lastTool = null;
-          setBusy(false);
-        }
-      }
-
-      function handleEvent(evt) {
-        switch (evt.type) {
-          case 'delta':
-            if (!current.text) current.bubble.textContent = '';
-            current.text += evt.text;
-            current.bubble.textContent = current.text;
-            scroll();
-            break;
-          case 'reasoning':
-            break;
-          case 'tool_start': {
-            const d = document.createElement('div');
-            d.className = 'tool';
-            d.innerHTML = `<span class="name">⚙ ${esc(evt.name)}</span> <span>${esc(summarize(evt.args))}</span>`;
-            log.appendChild(d);
-            lastTool = d;
-            scroll();
-            break;
-          }
-          case 'tool_end': {
-            if (lastTool) {
-              const out = document.createElement('div');
-              out.className = 'out';
-              out.textContent = String(evt.output || '').slice(0, 2000);
-              lastTool.appendChild(out);
-              if (!evt.ok) lastTool.classList.add('err');
-            }
-            scroll();
-            break;
-          }
-          case 'approval':
-            renderApproval(evt);
-            break;
-          case 'notice':
-            addNotice(evt.text);
-            break;
-          case 'error':
-            addNotice(`错误: ${evt.message}`);
-            break;
-          case 'done':
-            if (current) {
-              if (!current.text && evt.text) {
-                current.text = evt.text;
-              }
-              current.bubble.textContent = current.text;
-              current.bubble.classList.remove('cursor');
-            }
-            maybeOfferFeedback(String(current?.text || ''));
-            break;
-        }
-      }
-
-      function summarize(args) {
-        if (!args || typeof args !== 'object') return '';
-        return Object.entries(args)
-          .map(([k, v]) => `${k}=${typeof v === 'string' ? v.replace(/\n/g, '\\n') : JSON.stringify(v)}`.slice(0, 160))
-          .join('  ');
-      }
-
-      function addNotice(text) {
-        const d = document.createElement('div');
-        d.className = 'notice';
-        d.textContent = `! ${text}`;
-        log.appendChild(d);
-        scroll();
-      }
-
-      function renderApproval(evt) {
-        const d = document.createElement('div');
-        d.className = 'approval';
-        d.innerHTML =
-          `<h4>需要确认 · ${esc(evt.tool)} <span class="badge">风险 ${esc(evt.risk)}</span></h4>` +
-          `<pre>${esc(JSON.stringify(evt.args, null, 2))}</pre>` +
-          (evt.notes?.length ? `<div class="notice">${evt.notes.map(esc).join('<br>')}</div>` : '');
-        const bar = document.createElement('div');
-        bar.style.display = 'flex';
-        bar.style.gap = '8px';
-        const mk = (label, val, primary) => {
-          const b = document.createElement('button');
-          b.textContent = label;
-          if (primary) b.style.borderColor = 'var(--green)';
-          b.onclick = async () => {
-            bar.remove();
-            d.querySelector('h4').textContent = `${evt.tool} · ${label}`;
-            await fetch('/api/approve', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: evt.id, approved: val })
-            });
-          };
-          return b;
-        };
-        bar.appendChild(mk('允许一次', true, true));
-        bar.appendChild(mk('拒绝', false, false));
-        d.appendChild(bar);
-        log.appendChild(d);
-        scroll();
-      }
-
-      function setBusy(v) {
-        busy = v;
-        $('#btn-send').disabled = v;
-        $('#btn-stop').disabled = !v;
-      }
-
-      $('#btn-send').onclick = send;
-      $('#btn-stop').onclick = async () => {
-        await fetch('/api/stop', { method: 'POST' });
-        addNotice('已请求停止');
-      };
-      $('#btn-reset').onclick = async () => {
-        await fetch('/api/reset', { method: 'POST' });
-        log.innerHTML = '';
-        addNotice('已开始新会话');
-      };
-      $('#input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          send();
-        }
-      });
-      $('#input').focus();
-    </script>
-  </body>
+</script></body>
 </html>
