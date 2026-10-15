@@ -2,6 +2,8 @@
 import readline from 'node:readline';
 import { color } from '../utils.js';
 import { saveConfig } from '../config.js';
+import * as profile from '../profile.js';
+import * as feedback from '../feedback.js';
 
 export function createCliUi({ config, registry, agent }) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdout.isTTY });
@@ -174,6 +176,63 @@ export function createCliUi({ config, registry, agent }) {
         }
         return true;
       }
+      case 'profile':
+      case 'me': {
+        const sub = (arg || '').trim().toLowerCase();
+        if (sub === 'edit' || sub === 'set') {
+          await runProfileWizard({ ask, line, header: '\n更新你的「档案」（直接回车即保留原值）：' });
+          line(color.dim('档案已更新，下次推荐会参考它。'));
+          return true;
+        }
+        if (sub === 'clear') {
+          profile.clearProfile();
+          line(color.dim('已清空档案（回到未填写状态）'));
+          return true;
+        }
+        const p = profile.readProfile();
+        if (!p.configured) {
+          line(color.yellow('\n档案还未填写。'));
+          line(color.dim('输入 /profile edit 现在填写（性别、年龄、职业、风格偏好、尺码、禁忌…）。'));
+          return true;
+        }
+        line(color.bold('\n用户档案') + color.dim(`（更新于 ${p.updatedAt || '未知'}）`));
+        line(profile.formatProfileText(p));
+        line(color.dim('\n修改：/profile edit　清空：/profile clear'));
+        return true;
+      }
+      case 'feedback':
+      case 'fb': {
+        const sub = (arg || '').trim().toLowerCase();
+        if (sub === 'clear') {
+          feedback.clearFeedback();
+          line(color.dim('已清空全部评价记录（飞轮已重置）'));
+          return true;
+        }
+        if (sub === 'add') {
+          await runFeedbackWizard({ ask, line, header: '\n记录一次对刚才搭配的评价：' });
+          return true;
+        }
+        if (sub.startsWith('del ')) {
+          try {
+            const removed = feedback.removeFeedback(sub.slice(4).trim());
+            line(color.dim(`已删除评价 ${removed.id}`));
+          } catch (err) {
+            line(color.red(err.message));
+          }
+          return true;
+        }
+        if (!feedback.countFeedback()) {
+          line(color.yellow('\n还没有任何评价记录。'));
+          line(color.dim('下次给出搭配后，我会请你评价；你也可以用 /feedback add 手动补记一条。'));
+          return true;
+        }
+        line(color.bold('\n用户评价归纳'));
+        line(feedback.formatSummaryText());
+        line(color.bold('\n最近评价：'));
+        line(feedback.formatFeedbackText(feedback.listFeedback({ limit: 10 })));
+        line(color.dim('\n手动补记：/feedback add　清空：/feedback clear　删除单条：/feedback del <id>'));
+        return true;
+      }
       case 'model': {
         if (!arg) {
           line(`当前模型: ${color.bold(config.model)}  @ ${config.baseUrl}`);
@@ -241,6 +300,8 @@ export function createCliUi({ config, registry, agent }) {
       ['/skill <名>', '查看技能完整内容'],
       ['/plugins', '列出已安装插件'],
       ['/model [名]', '查看或临时切换模型'],
+      ['/profile [edit|clear]', '查看 / 修改个人档案'],
+      ['/feedback [add|clear]', '查看评价飞轮（/feedback add 手动补记一条）'],
       ['/workspace [路径]', '查看或切换工作区'],
       ['/auto [off]', '开关自动批准（谨慎）'],
       ['/reasoning', '显示/隐藏模型推理过程'],
@@ -334,3 +395,63 @@ export async function runSetupWizard(config, { ask, line }) {
 }
 
 export { saveConfig };
+
+/**
+ * 档案向导：逐项询问个人资料与穿搭偏好。
+ * 直接回车表示「保持原值/跳过」，因此既可首次填写，也可用于更新。
+ */
+export async function runProfileWizard({ ask, line, header } = {}) {
+  const current = profile.readProfile();
+  if (header) line(color.bold(color.yellow(header)));
+  line(color.dim('直接回车 = 保持原值 / 跳过。档案仅存本地（.cloudorder/profile/），不会上传。\n'));
+
+  const patch = {};
+  for (const f of profile.FORM_FIELDS) {
+    const cur = current[f.key];
+    const curText = Array.isArray(cur) ? cur.join('、') : String(cur || '');
+    const tip = [f.placeholder, curText && `当前: ${curText}`].filter(Boolean).join('；');
+    const answer = (await ask(`  ${color.cyan(f.label)}${tip ? color.dim(`（${tip}）`) : ''}: `)).trim();
+    if (!answer) continue;
+    patch[f.key] = answer;
+  }
+
+  if (!Object.keys(patch).length && !current.configured) {
+    line(color.dim('未填写任何字段，档案保持为空。'));
+    return current;
+  }
+  const saved = profile.saveProfile(patch);
+  line(color.dim(`\n档案已保存到 ${profile.PROFILE_FILE}`));
+  line(color.dim('提示：以后也可以随时在网页版右上角「档案」入口修改。'));
+  return saved;
+}
+
+/**
+ * 评价向导：命令行里手动补记一条对搭配的评价（满意 + 改进建议）。
+ * 平时由模型在对话中用 feedback_add 记录，这里是给用户的快捷入口。
+ */
+export async function runFeedbackWizard({ ask, line, header } = {}) {
+  if (header) line(color.bold(color.yellow(header)));
+  line(color.dim('直接回车 = 跳过该字段。评价仅存本地（.cloudorder/feedback/），不会上传。\n'));
+
+  line(`  满意度：${feedback.RATINGS.map((r) => `${r.icon} ${r.label}=${r.key}`).join('  ')}`);
+  const ratingRaw = (await ask('  你的感受（满意/一般/不满意）: ')).trim();
+  const rating = feedback.normalizeRating(ratingRaw);
+  if (ratingRaw && !rating) {
+    line(color.yellow('  没能识别满意度，已按「一般」记录。'));
+  }
+
+  const outfit = (await ask('  这次的搭配（可留空）: ')).trim();
+  const scenario = (await ask('  场合（如 通勤/约会，可留空）: ')).trim();
+  const suggestion = (await ask('  改进建议（想怎么改？可留空）: ')).trim();
+
+  if (!rating && !suggestion && !outfit) {
+    line(color.dim('什么都没有填，未记录。'));
+    return null;
+  }
+
+  const rec = feedback.addFeedback({ rating: rating || 'neutral', outfit, scenario, suggestion, source: 'cli' });
+  line(`\n  ${rec.icon} 已记录：${rec.label}${scenario ? `（${scenario}）` : ''}`);
+  if (suggestion) line(color.dim(`  改进建议：${suggestion}`));
+  line(color.dim(`  累计评价 ${feedback.countFeedback()} 条，下次推荐会参考它。`));
+  return rec;
+}

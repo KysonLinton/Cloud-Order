@@ -14,6 +14,8 @@ export const SESSION_DIR = path.join(DATA_DIR, 'sessions');
 export const WARDROBE_DIR = path.join(DATA_DIR, 'wardrobe');
 export const WARDROBE_IMAGE_DIR = path.join(WARDROBE_DIR, 'images');
 export const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+export const PROFILE_DIR = path.join(DATA_DIR, 'profile');
+export const FEEDBACK_DIR = path.join(DATA_DIR, 'feedback');
 
 export const DEFAULTS = {
   baseUrl: 'https://api.deepseek.com/v1',
@@ -46,7 +48,9 @@ export const DEFAULTS = {
     '3) 建议要落到具体单品、颜色、版型与搭配顺序，通常给出 2-3 套方案，说明各自适合的场合与取舍理由；' +
     '4) 需要天气时优先用 get_weather / get_weather_forecast 工具核实（可传城市名，无需密钥；未指定城市时可按本机 IP 自动定位，也可用 get_ip_location 先取坐标），需要潮流趋势或单品信息时可访问网页、搜索，不要编造；结合天气做穿搭决策时先加载 weather-dressing 技能；' +
     '5) 用户让你帮忙记录衣橱时，可用 wardrobe_add / wardrobe_update / wardrobe_remove 维护衣柜（修改、删除前先向用户确认）；用户发来衣物图片、或让你识别图片中衣服的材质/颜色/版型等参数时，用 analyze_image 工具（mode=clothing 会输出可直接录入衣柜的结构化字段），把识别结果先讲给用户确认，再决定是否调用 wardrobe_add 录入；' +
-    '6) 回答使用与用户相同的语言，简洁、准确、诚实；不确定时先查证而不是猜测。需要多步操作时先简短说明你的计划。'
+    '6) 推荐前先了解用户本人：用 profile_get 读取用户的「档案」（性别、年龄、体型、职业、常居城市、常去场合、风格与颜色偏好、禁忌、尺码等），让建议贴合他的身份与偏好；档案为空时，主动邀请用户花一分钟填写（网页版右上角「档案」入口），在用户填写之前不要假设他的性别、身材或偏好，也不要编造档案内容。用户当下在对话中的明确要求优先于档案；' +
+    '7) 每次给出具体搭配建议后，用一两句话邀请用户评价（「这套满意吗？哪里想调整？」）；用户回应后用 feedback_add 记录满意度与改进建议（只记用户真实说的，不要编造），推荐前先用 feedback_list 读一次历史评价，命中「要避免」的做法不要重复、用户认可的做法优先沿用——这样你会越用越懂他；' +
+    '8) 回答使用与用户相同的语言，简洁、准确、诚实；不确定时先查证而不是猜测。需要多步操作时先简短说明你的计划。'
 };
 
 /** 展开字符串中的 ${ENV_VAR} / $ENV_VAR 形式的环境变量引用 */
@@ -128,7 +132,7 @@ export function saveConfig(config, file = path.join(ROOT, 'config.json')) {
 }
 
 export function ensureDirs() {
-  for (const dir of [DATA_DIR, SESSION_DIR, WARDROBE_DIR, WARDROBE_IMAGE_DIR, UPLOAD_DIR, SKILLS_DIR, PLUGINS_DIR]) {
+  for (const dir of [DATA_DIR, SESSION_DIR, WARDROBE_DIR, WARDROBE_IMAGE_DIR, UPLOAD_DIR, PROFILE_DIR, FEEDBACK_DIR, SKILLS_DIR, PLUGINS_DIR]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }

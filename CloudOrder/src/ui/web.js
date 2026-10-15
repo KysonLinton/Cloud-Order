@@ -11,6 +11,8 @@ import { color } from '../utils.js';
 import { locateBrief } from '../tools/location.js';
 import { identifyImage } from '../tools/vision.js';
 import * as wardrobe from '../wardrobe.js';
+import * as profile from '../profile.js';
+import * as feedback from '../feedback.js';
 
 export async function startWebServer({ config, registry }) {
   const port = Number(config.port || 8787);
@@ -74,6 +76,8 @@ export async function startWebServer({ config, registry }) {
         workspace: config.workspace,
         autoApprove: config.autoApprove,
         visionModel: config.visionModel || config.model,
+        profileConfigured: profile.isProfileConfigured(),
+        feedbackCount: feedback.countFeedback(),
         tools: [...registry.tools.values()].map((t) => ({ name: t.name, description: t.description, risk: t.risk, plugin: t.plugin })),
         skills: [...registry.skills.values()].map((s) => ({ name: s.name, description: s.description })),
         plugins: registry.plugins.map((p) => ({ name: p.name, description: p.description, tools: p.tools }))
@@ -122,6 +126,16 @@ export async function startWebServer({ config, registry }) {
       } catch (err) {
         return json(res, { error: `定位/天气获取失败：${err.message}` }, 502);
       }
+    }
+
+    // ---- 用户档案（Profile）----
+    if (url.pathname === '/api/profile') {
+      return handleProfile(req, res);
+    }
+
+    // ---- 用户反馈（Feedback）：评价飞轮 ----
+    if (url.pathname === '/api/feedback') {
+      return handleFeedback(req, res, url);
     }
 
     // ---- 衣柜（Wardrobe）----
@@ -212,8 +226,8 @@ export async function startWebServer({ config, registry }) {
   console.log(color.dim(`  工具 ${registry.tools.size} · 技能 ${registry.skills.size} · 插件 ${registry.plugins.length}`));
   console.log(color.dim('  在浏览器打开上面的地址即可对话。Ctrl+C 停止服务。\n'));
 
-  // 尝试自动打开浏览器（失败不影响运行）
-  if (process.platform === 'win32') {
+  // 尝试自动打开浏览器（失败不影响运行；设置 CLOUDORDER_NO_OPEN=1 可跳过，供脚本/测试使用）
+  if (process.platform === 'win32' && !process.env.CLOUDORDER_NO_OPEN) {
     import('node:child_process').then(({ exec }) => {
       exec(`start "" "${addr}"`, { shell: 'cmd.exe' }, () => {});
     });
@@ -235,6 +249,70 @@ function json(res, obj, status = 200) {
   const body = JSON.stringify(obj);
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(body);
+}
+
+/** 用户档案接口：GET 读取 / POST 保存 / DELETE 清空 */
+async function handleProfile(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const p = profile.readProfile();
+      return json(res, { profile: p, fields: profile.FORM_FIELDS, configured: p.configured });
+    }
+    if (req.method === 'POST' || req.method === 'PUT') {
+      const body = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        return json(res, { error: 'body 必须是 JSON' }, 400);
+      }
+      const saved = profile.saveProfile(payload || {});
+      return json(res, { ok: true, profile: saved, configured: saved.configured });
+    }
+    if (req.method === 'DELETE') {
+      profile.clearProfile();
+      return json(res, { ok: true, configured: false });
+    }
+    return json(res, { error: 'method not allowed' }, 405);
+  } catch (err) {
+    return json(res, { error: err.message }, 400);
+  }
+}
+
+/** 用户反馈接口（评价飞轮）：GET 列表+归纳 / POST 新增 / DELETE 清空（?id= 删单条） */
+async function handleFeedback(req, res, url) {
+  try {
+    if (req.method === 'GET') {
+      return json(res, {
+        items: feedback.listFeedback({ rating: url.searchParams.get('rating') || '', limit: url.searchParams.get('limit') }),
+        summary: feedback.summarize(),
+        ratings: feedback.RATINGS
+      });
+    }
+    if (req.method === 'POST' || req.method === 'PUT') {
+      const body = await readBody(req);
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        return json(res, { error: 'body 必须是 JSON' }, 400);
+      }
+      const item = feedback.addFeedback({ ...payload, source: 'web' });
+      return json(res, { ok: true, item, summary: feedback.summarize() }, 201);
+    }
+    if (req.method === 'DELETE') {
+      const id = url.searchParams.get('id');
+      if (id) {
+        const removed = feedback.removeFeedback(id);
+        return json(res, { ok: true, removed: removed.id, summary: feedback.summarize() });
+      }
+      feedback.clearFeedback();
+      return json(res, { ok: true, cleared: true, summary: feedback.summarize() });
+    }
+    return json(res, { error: 'method not allowed' }, 405);
+  } catch (err) {
+    return json(res, { error: err.message }, 400);
+  }
 }
 
 /** 衣柜接口：列表 / 新增 / 修改 / 删除 / 图片读取 */

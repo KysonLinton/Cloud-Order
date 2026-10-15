@@ -6,6 +6,8 @@
 - **任意大模型**：OpenAI 兼容接口（OpenAI / DeepSeek / 通义 / Kimi / 智谱 / Ollama / LM Studio …）
 - **插件接口**：丢一个 `.mjs` 文件进 `plugins/`，工具自动注册给模型
 - **技能接口**：丢一个含 `SKILL.md` 的文件夹进 `skills/`，按需渐进式加载
+- **个人档案**：首次启动引导你填写性别/年龄/职业/风格偏好/尺码等，之后随时可在网页版修改，推荐会据此调整
+- **评价飞轮**：每次推荐后点评「满意 / 一般 / 不满意」+ 改进建议，管家记下并在后续推荐里避开雷点、延续你认可的做法
 - **本地衣柜**：衣物数据库（材质/颜色/图片…）由你录入，搭配只从衣柜中挑选
 - **图片识别**：识别衣服照片，读出材质/颜色/版型等参数，一键录入衣柜
 - **两种界面**：终端 CLI + 浏览器 Web（都支持流式输出和工具审批）
@@ -100,6 +102,11 @@ node src/index.js --web --port 9000
 | `wardrobe_update` | 中 | 修改衣物参数（需确认） |
 | `wardrobe_remove` | 高 | 删除衣物（需确认） |
 | `analyze_image` | 低 | **识别图片**：`mode=clothing` 读出衣服的名称/类别/颜色/材质/风格/季节/版型/品牌等参数，可直接录入衣柜 |
+| `profile_get` | 低 | 读取用户的「个人档案」（性别、年龄、体型、职业、风格与颜色偏好、禁忌、尺码等） |
+| `profile_update` | 中 | 更新个人档案字段（需确认） |
+| `feedback_add` | 中 | **记录对刚给出的搭配的评价**：满意度（satisfied/neutral/unsatisfied）+ 改进建议 + 要避免的点（需确认） |
+| `feedback_list` | 低 | 读取历史评价记录与归纳（满意度、改进建议、雷点），推荐前参考 |
+| `feedback_delete` | 高 | 删除一条记错的评价（需确认） |
 | `load_skill` | 低 | 加载技能完整说明 |
 | `list_skills` | 低 | 列出已安装技能 |
 
@@ -115,6 +122,62 @@ node src/index.js --web --port 9000
 - 数据来源：IP 定位（ipwho.is）+ 反向地理编码（BigDataCloud，市/区级）+ 当日天气（Open-Meteo）
 - 点击卡片即可刷新；鼠标悬停可看当天的「穿衣提示」
 - 后端端点：`GET /api/location-weather`（返回结构化 JSON）
+
+---
+
+## 个人档案（Profile）：让建议贴合你本人
+
+「穿搭管家」会参考你的**个人档案**给出建议：性别、年龄、身高体重、体型、职业、常居城市、常去场合、风格与颜色偏好、禁忌、尺码、预算。
+
+### 首次启动引导
+
+第一次运行 `node src/index.js`（或双击 `启动.bat`）时，如果档案还没填过，会在配置向导之后询问：
+
+```
+  第一次使用：先花一分钟填一下你的「档案」
+  现在填写吗？[Y/n]:
+```
+
+回车即逐项填写（每项都可直接回车跳过）；也可以输入 `n` 跳过，之后再 `/profile edit` 或到网页版补填。
+
+### 网页版入口
+
+网页版右上角有 **「档案」按钮**（未填写时带一个黄点提示），点击即可打开表单：
+
+| 字段 | 示例 |
+| --- | --- |
+| 性别 / 年龄 | 男 / 28 |
+| 身高 / 体重 / 体型 | 178 / 70 / 标准 |
+| 职业 / 身份 | 产品经理 |
+| 常居城市 | 北京（用于按天气给建议） |
+| 常去场合 | 通勤, 约会, 健身 |
+| 风格偏好 | 简约, 通勤 |
+| 常穿 / 不喜欢的颜色 | 黑, 白, 藏青 / 荧光色 |
+| 上衣 / 裤装 / 鞋码 | M / 30 / 42 |
+| 预算档位 · 禁忌 · 补充 | 中等 · 不穿紧身 · 肩宽 |
+
+- 首次打开网页版、档案尚未填写时，**表单会自动弹出**（点「稍后再说」即可跳过）
+- 深链接：浏览器打开 `#profile` 直接打开档案表单
+- 「清空档案」可把档案恢复到未填写状态
+- 档案仅保存在本地 `.cloudorder/profile/profile.json`，**不会上传**
+
+### 数据存放与接口
+
+```
+.cloudorder/profile/profile.json    # 你的个人档案（JSON）
+```
+
+| 方法 | 路径 | 作用 |
+| --- | --- | --- |
+| `GET` | `/api/profile` | 读取档案 + 字段定义 |
+| `POST` | `/api/profile` | 保存/合并档案字段 |
+| `DELETE` | `/api/profile` | 清空档案 |
+
+### 使用原则
+
+- 模型在推荐前会先 `profile_get` 读一次档案，让建议贴合你的身份与偏好
+- 档案是**依据而非铁律**：你当次对话里的明确要求（「今天想正式一点」）优先于档案
+- 档案为空时**不会假设**你的性别、身材或偏好，也不会编造档案内容
 
 ---
 
@@ -338,7 +401,7 @@ node src/index.js --no-stream      关闭流式输出
 
 ```
 /help  /tools  /tool <名> <json>  /skills  /skill <名>  /plugins
-/model  /workspace  /auto  /reasoning  /new  /config  /save  /exit
+/model  /profile [edit|clear]  /workspace  /auto  /reasoning  /new  /config  /save  /exit
 ```
 
 `Ctrl+C` 第一次中断当前生成，第二次退出。
@@ -381,6 +444,8 @@ CloudOrder/
 │   ├── weather-dressing/   结合天气的穿搭
 │   ├── wardrobe-matching/  基于「衣柜」真实单品的搭配
 │   ├── wardrobe-vision/    识别衣物图片，转成衣柜字段
+│   ├── profile-setup/      收集 / 更新 / 使用个人档案
+│   ├── outfit-feedback/    评价飞轮：推荐后收集评价，回顾时参考
 │   ├── summarize-file/
 │   └── commit-message/
 ├── public/index.html       Web 界面
@@ -394,13 +459,43 @@ CloudOrder/
 │   ├── session.js          会话持久化
 │   ├── utils.js            公共工具
 │   ├── wardrobe.js         衣柜数据库（本地 JSON + 图片）
-│   ├── tools/              内置工具（含 weather.js 天气、location.js IP 定位、wardrobe.js 衣柜、vision.js 图片识别）
+│   ├── profile.js          个人档案（本地 JSON）
+│   ├── feedback.js         搭配评价飞轮（本地 JSON + 偏好归纳）
+│   ├── tools/              内置工具（含 weather.js 天气、location.js IP 定位、wardrobe.js 衣柜、vision.js 图片识别、profile.js 档案、feedback.js 评价飞轮）
 │   ├── plugins/loader.js   插件加载器
 │   └── ui/                 CLI 与 Web 界面
 └── test/                   测试与 mock 模型服务
 ```
 
-会话记录保存在 `.cloudorder/sessions/`，衣柜数据保存在 `.cloudorder/wardrobe/`。
+会话记录保存在 `.cloudorder/sessions/`，衣柜数据保存在 `.cloudorder/wardrobe/`，个人档案保存在 `.cloudorder/profile/`，搭配评价（飞轮）保存在 `.cloudorder/feedback/`。以上都在 `.cloudorder/` 下，已被 `.gitignore` 忽略，仅存本地、不上传。
+
+---
+
+## 评价飞轮：越用越懂你
+
+穿搭管家在**每次给出具体搭配建议后**都会顺口问一句「这套满意吗？哪里想调整？」，你点评之后它会记下来，并在往后的推荐里应用：
+
+```
+推荐 → 你评价（满意/一般/不满意 + 改进建议） → 记入偏好 → 下次推荐更准 → 再评价 …
+```
+
+**你可以这样用：**
+
+- **网页版**：右上角「反馈」入口查看评价统计与历史；每次推荐后，回复下方也会出现一条快捷评价栏（👍 满意 / 🤔 一般 / 👎 不满意 / 反馈），点一下即可补充一句建议。深链接 `#feedback` 可直接打开。
+- **终端**：`/feedback` 查看归纳与历史，`/feedback add` 手动补记，`/feedback clear` 清空。
+- **对话里**：直接说「上衣太正式了，想休闲点」「这次挺满意，版型利落」，管家会用 `feedback_add` 记下来。
+
+记录什么：
+
+| 字段 | 说明 |
+| --- | --- |
+| `rating` | 满意 `satisfied` / 一般 `neutral` / 不满意 `unsatisfied`（也识别「还行」「👎」等中文与表情写法） |
+| `outfit` | 这次的具体搭配，便于日后对照 |
+| `scenario` | 场合（通勤 / 约会 / 面试…） |
+| `suggestion` | 你的原话改进建议（原意保留，不改写） |
+| `liked` / `disliked` / `tags` | 明确的认可点 / 要避免的点 / 可归纳标签 |
+
+评价会以「用户反馈」段落注入系统提示（无评价时不占 token），并可在 `feedback_list` 里查阅。写入类操作需确认，删除需确认；清空或删除后不再是偏好依据。当次对话里的明确要求**始终优先于**历史反馈。
 
 ---
 

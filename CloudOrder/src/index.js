@@ -4,7 +4,8 @@ import process from 'node:process';
 import { loadConfig, ensureDirs, hasApiKey } from './config.js';
 import { createRegistry } from './registry.js';
 import { Agent } from './agent.js';
-import { createCliUi, runSetupWizard } from './ui/cli.js';
+import { createCliUi, runSetupWizard, runProfileWizard } from './ui/cli.js';
+import * as profile from './profile.js';
 import { color } from './utils.js';
 
 const HELP = `
@@ -170,6 +171,12 @@ async function main() {
     agent.reset();
   }
 
+  // 首次运行：邀请填写个人档案（穿搭建议的依据）。直接回车可全部跳过。
+  if (!opts.flags.has('once') && !profile.isProfileConfigured()) {
+    const p = await offerProfileSetup({ cli, ask: cli.ask, line: cli.line });
+    if (p?.configured) agent.reset();
+  }
+
   if (opts.flags.has('once')) {
     const prompt = opts.positional.join(' ');
     agent.reset();
@@ -238,6 +245,23 @@ async function conversationLoop({ agent, cli, config }) {
   cli.close();
 }
 
+async function offerProfileSetup({ ask, line }) {
+  line('');
+  line(color.bold(color.magenta('  第一次使用：先花一分钟填一下你的「档案」')));
+  line(
+    color.dim(
+      '  穿搭管家会根据你的性别、年龄、体型、职业、常去场合、风格与颜色偏好、禁忌和尺码，给出更贴合你的建议。'
+    )
+  );
+  line(color.dim('  档案仅保存在本地（.cloudorder/profile/profile.json），不会上传；随时可在网页版「档案」入口修改。'));
+  const go = ((await ask('\n  现在填写吗？[Y/n]: ')) || 'y').trim().toLowerCase();
+  if (go === 'n' || go === 'no') {
+    line(color.dim('  好，跳过。想填时输入 /profile edit，或在网页版右上角「档案」入口填写。\n'));
+    return null;
+  }
+  return await runProfileWizard({ ask, line });
+}
+
 async function checkConfig(config, registry) {
   console.log(color.bold('\n配置检查'));
   console.log(`  配置文件   ${config.configPath || color.yellow('(未找到 config.json，使用默认值)')}`);
@@ -245,6 +269,8 @@ async function checkConfig(config, registry) {
   console.log(`  model      ${config.model}`);
   console.log(`  apiKey     ${config.apiKey ? `${config.apiKey.slice(0, 6)}****` : color.yellow('(空)')}`);
   console.log(`  工作区     ${config.workspace}`);
+  console.log(`  档案       ${profile.isProfileConfigured() ? color.green('已填写') : color.yellow('未填写（运行 /profile edit 或网页版「档案」入口）')}`);
+  console.log(`  评价飞轮   ${feedback.countFeedback() ? color.green(`已记录 ${feedback.countFeedback()} 条`) : color.yellow('暂无评价（推荐后我会请你评价）')}`);
   console.log(
     `  已加载     ${registry.tools.size} 个工具 / ${registry.skills.size} 个技能 / ${registry.plugins.length} 个插件`
   );

@@ -7,6 +7,8 @@ import { parseFrontMatter } from '../src/registry.js';
 import { weatherText, isWet, fetchWeatherSummary } from '../src/tools/weather.js';
 import { locateBrief, reverseGeocode, locateByIp } from '../src/tools/location.js';
 import * as wardrobe from '../src/wardrobe.js';
+import * as profile from '../src/profile.js';
+import * as feedback from '../src/feedback.js';
 import { identifyImage, parseJsonLoose } from '../src/tools/vision.js';
 
 let pass = 0;
@@ -50,6 +52,12 @@ check('衣柜数据层导出可用', typeof wardrobe.addItem === 'function' && t
 check('图片识别工具已注册', registry.tools.has('analyze_image'));
 check('图片识别模块导出可用', typeof identifyImage === 'function' && typeof parseJsonLoose === 'function');
 check('衣物图片识别技能已加载', [...registry.skills.keys()].includes('wardrobe-vision'));
+check('档案工具已注册', registry.tools.has('profile_get') && registry.tools.has('profile_update'));
+check('档案模块导出可用', typeof profile.readProfile === 'function' && typeof profile.saveProfile === 'function');
+check('档案技能已加载', [...registry.skills.keys()].includes('profile-setup'));
+check('反馈工具已注册', registry.tools.has('feedback_add') && registry.tools.has('feedback_list') && registry.tools.has('feedback_delete'));
+check('反馈模块导出可用', typeof feedback.addFeedback === 'function' && typeof feedback.summarize === 'function');
+check('评价飞轮技能已加载', [...registry.skills.keys()].includes('outfit-feedback'));
 
 console.log('\n[3] 天气代码映射');
 check('晴 -> 0', weatherText(0) === '晴');
@@ -124,6 +132,73 @@ const getOut = await registry.tools.get('wardrobe_get').run({ id: added.id });
 check('wardrobe_get 输出完整参数', getOut.includes('亚麻') && getOut.includes('修身'));
 wardrobe.removeItem(added.id);
 check('删除后恢复原有数量', wardrobe.listAll().length === before, `now ${wardrobe.listAll().length}, before ${before}`);
+
+console.log('\n[6c] 用户档案（保存/读取/清空）');
+const pfBefore = profile.readProfile();
+check('档案初始可读', typeof pfBefore === 'object' && typeof pfBefore.configured === 'boolean');
+const pfSaved = profile.saveProfile({
+  gender: '男',
+  age: '28',
+  occupation: '冒烟测试-产品经理',
+  styles: '简约, 通勤',
+  favColors: ['黑', '白'],
+  avoidColors: '荧光色',
+  topSize: 'M'
+});
+check('保存后标记为已填写', pfSaved.configured === true);
+check('列表字段解析为数组', Array.isArray(pfSaved.styles) && pfSaved.styles.length === 2 && pfSaved.favColors.length === 2, JSON.stringify(pfSaved.styles));
+check('写入后落盘可读回', profile.readProfile().occupation === '冒烟测试-产品经理');
+check('isProfileConfigured 为真', profile.isProfileConfigured() === true);
+const pfText = profile.formatProfileText(profile.readProfile());
+check('档案文本含关键信息', pfText.includes('产品经理') && pfText.includes('简约'));
+const profileToolOut = await registry.tools.get('profile_get').run({});
+check('profile_get 输出档案内容', profileToolOut.includes('产品经理'));
+const pfUpdateOut = await registry.tools.get('profile_update').run({ city: '冒烟测试-上海' });
+check('profile_update 局部更新', pfUpdateOut.includes('上海') && profile.readProfile().occupation === '冒烟测试-产品经理');
+profile.clearProfile();
+check('清空后回到未填写', profile.isProfileConfigured() === false);
+const emptyGet = await registry.tools.get('profile_get').run({});
+check('空档案时不编造', emptyGet.includes('尚未填写'));
+
+console.log('\n[6d] 用户反馈飞轮（满意/一般/不满意 → 偏好注入）');
+feedback.clearFeedback();
+check('初始无评价记录', feedback.countFeedback() === 0);
+check('空状态提示段落为空', feedback.formatFeedbackForPrompt() === '');
+check('满意度别名归一', feedback.normalizeRating('满意') === 'satisfied' && feedback.normalizeRating('还行') === 'neutral' && feedback.normalizeRating('👎') === 'unsatisfied');
+
+feedback.addFeedback({ rating: 'unsatisfied', outfit: '藏青西装外套 + 白衬衫', scenario: '通勤', suggestion: '上衣太正式了，想休闲一点', disliked: ['太正式'], tags: ['太正式'] });
+const fbWarn = feedback.formatFeedbackForPrompt();
+check('不满意被写入并注入提示', fbWarn.includes('太正式了，想休闲一点') && fbWarn.includes('用户反馈'), fbWarn.slice(0, 60));
+check('注入段落含指示语', fbWarn.includes('不要重复'));
+
+feedback.addFeedback({ rating: '满意', outfit: '白T + 直筒牛仔裤', scenario: '周末', suggestion: '这样就很舒服' });
+const sum = feedback.summarize();
+check('统计两类评价各 1 条', sum.byRating.satisfied === 1 && sum.byRating.unsatisfied === 1, JSON.stringify(sum.byRating));
+check('满意率计算正确', sum.satisfiedRate === 50, String(sum.satisfiedRate));
+check('雷点被归纳', sum.painPoints.includes('太正式'), JSON.stringify(sum.painPoints));
+check('认可列表包含满意那条', sum.likes.some((l) => l.text.includes('舒服')));
+
+const fbListOut = await registry.tools.get('feedback_list').run({ limit: 5 });
+check('feedback_list 输出归纳', fbListOut.includes('满意率') && fbListOut.includes('太正式'), fbListOut.slice(0, 80));
+const fbAddOut = await registry.tools.get('feedback_add').run({ rating: '一般', suggestion: '颜色偏深，想亮一点', scenario: '约会' });
+check('feedback_add 记录「一般」', fbAddOut.includes('已记录') && feedback.countFeedback() === 3, fbAddOut.slice(0, 50));
+check('feedback_add 容错中文满意度', fbAddOut.includes('一般'));
+check('新反馈立刻反映到提示', feedback.formatFeedbackForPrompt().includes('颜色偏深'));
+
+const first = feedback.listFeedback({ limit: 1 })[0];
+const delOut = await registry.tools.get('feedback_delete').run({ id: first.id });
+check('feedback_delete 删除单条', delOut.includes('已删除') && feedback.countFeedback() === 2);
+check('rating 过滤可用', feedback.listFeedback({ rating: 'unsatisfied' }).length === 1);
+feedback.clearFeedback();
+check('清空后记录为 0', feedback.countFeedback() === 0);
+check('清空后提示段落回到空串', feedback.formatFeedbackForPrompt() === '');
+let fbErr = '';
+try {
+  feedback.addFeedback({});
+} catch (err) {
+  fbErr = err.message;
+}
+check('空反馈被拒绝', fbErr.includes('至少要提供'), fbErr);
 
 console.log('\n[7] Agent 循环（假模型，验证 tool_calls 编排）');
 let calls = 0;

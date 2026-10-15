@@ -4,6 +4,8 @@
 import { chatCompletion } from './llm.js';
 import { assessToolCall } from './permissions.js';
 import { buildSkillsPrompt } from './registry.js';
+import { formatProfileForPrompt } from './profile.js';
+import { formatFeedbackForPrompt } from './feedback.js';
 import { color, truncate } from './utils.js';
 
 /** 把工具定义转成 OpenAI Function Calling 格式 */
@@ -49,6 +51,14 @@ export class Agent {
 
     const pluginPrompts = plugins.filter((p) => p.systemPrompt).map((p) => p.systemPrompt);
     if (pluginPrompts.length) parts.push('', '# 插件能力', ...pluginPrompts);
+
+    // 用户档案（每次重建系统提示时读取，保证用户在网页/CLI 更新后立即生效）
+    const profilePrompt = formatProfileForPrompt();
+    if (profilePrompt) parts.push('', profilePrompt);
+
+    // 用户反馈（往次推荐评价的归纳）：让模型把历史反馈当成偏好依据
+    const feedbackPrompt = formatFeedbackForPrompt();
+    if (feedbackPrompt) parts.push('', feedbackPrompt);
 
     parts.push(
       '',
